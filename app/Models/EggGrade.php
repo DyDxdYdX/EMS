@@ -32,6 +32,13 @@ class EggGrade extends Model
         return $this->hasMany(StockAdjustment::class);
     }
 
+    public function hasHistory(): bool
+    {
+        return $this->gradings()->exists()
+            || $this->sales()->exists()
+            || $this->stockAdjustments()->exists();
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

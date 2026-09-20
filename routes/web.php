@@ -11,6 +11,7 @@ Route::get('/', function (): RedirectResponse {
 
 Route::middleware('auth')->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('egg-grades', 'pages::egg-grades.index')->name('egg-grades.index');
 });
 
 require __DIR__.'/settings.php';

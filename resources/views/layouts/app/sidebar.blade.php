@@ -24,11 +24,17 @@
                     <flux:sidebar.item icon="shopping-cart" :href="route('sales.index')" :current="request()->routeIs('sales.*')" wire:navigate>
                         {{ __('Sales') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="receipt-percent" :href="route('expenses.index')" :current="request()->routeIs('expenses.*')" wire:navigate>
+                        {{ __('Expenses') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="users" :href="route('customers.index')" :current="request()->routeIs('customers.*')" wire:navigate>
                         {{ __('Customers') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                         {{ __('Egg grades') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="tag" :href="route('expense-categories.index')" :current="request()->routeIs('expense-categories.*')" wire:navigate>
+                        {{ __('Expense categories') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

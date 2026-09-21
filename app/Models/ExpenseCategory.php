@@ -20,6 +20,11 @@ class ExpenseCategory extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function hasHistory(): bool
+    {
+        return $this->expenses()->exists();
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

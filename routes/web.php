@@ -10,7 +10,7 @@ Route::get('/', function (): RedirectResponse {
 })->name('home');
 
 Route::middleware('auth')->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('dashboard', 'pages::dashboard.index')->name('dashboard');
     Route::livewire('productions', 'pages::productions.index')->name('productions.index');
     Route::livewire('gradings', 'pages::gradings.index')->name('gradings.index');
     Route::livewire('sales', 'pages::sales.index')->name('sales.index');

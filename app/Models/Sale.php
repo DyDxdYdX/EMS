@@ -36,6 +36,11 @@ class Sale extends Model
         return $this->belongsTo(EggGrade::class);
     }
 
+    public static function normalizedEggQuantity(string $unit, int $quantity, int $eggsPerTray): int
+    {
+        return $unit === 'tray' ? $quantity * $eggsPerTray : $quantity;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

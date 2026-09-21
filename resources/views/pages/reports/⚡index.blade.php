@@ -107,6 +107,14 @@ new #[Title('Reports')] class extends Component {
         ]);
     }
 
+    public function pdfUrl(): string
+    {
+        return route('reports.pdf', [
+            'start_date' => $this->appliedStartDate,
+            'end_date' => $this->appliedEndDate,
+        ]);
+    }
+
     /**
      * @return array<string, list<string>>
      */
@@ -162,11 +170,12 @@ new #[Title('Reports')] class extends Component {
 
     <flux:card class="space-y-4">
         <div>
-            <flux:heading size="lg">{{ __('CSV exports') }}</flux:heading>
+            <flux:heading size="lg">{{ __('Exports') }}</flux:heading>
             <flux:subheading>{{ __('Downloads include records from :start through :end.', ['start' => $this->appliedStartDate, 'end' => $this->appliedEndDate]) }}</flux:subheading>
         </div>
 
         <div class="flex flex-wrap gap-2">
+            <flux:button variant="primary" icon="document-arrow-down" :href="$this->pdfUrl()">{{ __('Download PDF') }}</flux:button>
             <flux:button icon="arrow-down-tray" :href="$this->exportUrl('sales')">{{ __('Export sales') }}</flux:button>
             <flux:button icon="arrow-down-tray" :href="$this->exportUrl('expenses')">{{ __('Export expenses') }}</flux:button>
             <flux:button icon="arrow-down-tray" :href="$this->exportUrl('production')">{{ __('Export production') }}</flux:button>

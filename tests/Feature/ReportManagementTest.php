@@ -37,6 +37,7 @@ test('authenticated users can visit the reports page', function () {
         ->assertSee('Expenses by category')
         ->assertSee('Production totals')
         ->assertSee('Current stock by egg grade')
+        ->assertSee('Download PDF')
         ->assertSee('Export sales');
 });
 
@@ -497,6 +498,128 @@ test('csv exports reject an inverted or missing date range', function () {
         ->assertSessionHasErrors(['start_date', 'end_date']);
 });
 
+test('guests are redirected from the farm report pdf', function () {
+    $this->get(route('reports.pdf', [
+        'start_date' => '2026-09-01',
+        'end_date' => '2026-09-30',
+    ]))->assertRedirectToRoute('login');
+});
+
+test('the farm report pdf includes exact period totals and current stock', function () {
+    $this->travelTo('2026-09-21 12:00:00');
+
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create(['name' => 'Premium']);
+    $category = ExpenseCategory::factory()->create(['name' => 'Feed']);
+
+    EggGrading::factory()->for($grade)->create([
+        'grading_date' => '2026-08-01',
+        'quantity' => 40,
+    ]);
+    Sale::factory()->for($grade, 'eggGrade')->create([
+        'sale_date' => '2026-09-05',
+        'total_amount' => '10.10',
+        'unit_price' => '10.10',
+        'quantity' => 1,
+        'normalized_egg_quantity' => 10,
+    ]);
+    Sale::factory()->for($grade, 'eggGrade')->create([
+        'sale_date' => '2026-08-31',
+        'total_amount' => '99.00',
+        'normalized_egg_quantity' => 5,
+    ]);
+    Expense::factory()->for($category, 'expenseCategory')->create([
+        'expense_date' => '2026-09-10',
+        'amount' => '1.13',
+    ]);
+    Expense::factory()->for($category, 'expenseCategory')->create([
+        'expense_date' => '2026-10-01',
+        'amount' => '40.00',
+    ]);
+    Production::factory()->create([
+        'production_date' => '2026-09-08',
+        'total_eggs' => 80,
+        'damaged_eggs' => 3,
+    ]);
+    Production::factory()->create([
+        'production_date' => '2026-08-01',
+        'total_eggs' => 10,
+        'damaged_eggs' => 1,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('reports.pdf', [
+        'start_date' => '2026-09-01',
+        'end_date' => '2026-09-30',
+    ]));
+
+    $response->assertOk()->assertDownload('farm-report-2026-09-01-to-2026-09-30.pdf');
+
+    expect($response->baseResponse)->toBeInstanceOf(StreamedResponse::class)
+        ->and($response->headers->get('content-type'))->toContain('application/pdf');
+
+    $text = pdfText($response->streamedContent());
+
+    expect($text)
+        ->toContain('Farm report')
+        ->toContain('Period: 2026-09-01 to 2026-09-30')
+        ->toContain('10.10')
+        ->toContain('1.13')
+        ->toContain('8.97')
+        ->toContain('Premium')
+        ->toContain('Feed')
+        ->toContain('80')
+        ->toContain('25')
+        ->not->toContain('99.00')
+        ->not->toContain('40.00');
+});
+
+test('the farm report pdf escapes names that would break the document', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create(['name' => 'Large) Tj /F1 1 Tf (hack']);
+    $category = ExpenseCategory::factory()->create(['name' => '<script>alert(1)</script>']);
+
+    Sale::factory()->for($grade, 'eggGrade')->create([
+        'sale_date' => '2026-09-10',
+        'total_amount' => '5.00',
+        'normalized_egg_quantity' => 5,
+    ]);
+    Expense::factory()->for($category, 'expenseCategory')->create([
+        'expense_date' => '2026-09-10',
+        'amount' => '1.00',
+    ]);
+
+    $pdf = $this->actingAs($user)->get(route('reports.pdf', [
+        'start_date' => '2026-09-01',
+        'end_date' => '2026-09-30',
+    ]))->streamedContent();
+    $text = pdfText($pdf);
+
+    expect($pdf)->toStartWith('%PDF-')
+        ->and($text)->toContain('Large) Tj /F1 1 Tf (hack')
+        ->and($text)->toContain('<script>alert(1)</script>')
+        ->and($pdf)->toContain('\\)')
+        ->and($pdf)->not->toContain("\n(hack)");
+});
+
+test('the farm report pdf rejects an inverted or missing date range', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('reports.index'))
+        ->get(route('reports.pdf', [
+            'start_date' => '2026-09-30',
+            'end_date' => '2026-09-01',
+        ]))
+        ->assertRedirectToRoute('reports.index')
+        ->assertSessionHasErrors(['start_date', 'end_date']);
+
+    $this->actingAs($user)
+        ->from(route('reports.index'))
+        ->get(route('reports.pdf'))
+        ->assertRedirectToRoute('reports.index')
+        ->assertSessionHasErrors(['start_date', 'end_date']);
+});
+
 /**
  * @return list<list<string|null>>
  */
@@ -507,4 +630,23 @@ function csvRows(string $content): array
         ->map(fn (string $line): array => str_getcsv($line, escape: ''))
         ->values()
         ->all();
+}
+
+function pdfText(string $pdf): string
+{
+    preg_match_all('/\((?:\\\\.|[^\\\\)])*\)/', $pdf, $matches);
+
+    return collect($matches[0] ?? [])
+        ->map(function (string $literal): string {
+            $inner = substr($literal, 1, -1);
+
+            return strtr($inner, [
+                '\\\\' => '\\',
+                '\\(' => '(',
+                '\\)' => ')',
+                '\\r' => "\r",
+                '\\n' => "\n",
+            ]);
+        })
+        ->implode("\n");
 }

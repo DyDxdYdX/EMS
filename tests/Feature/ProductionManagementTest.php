@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\EggGrade;
+use App\Models\EggGrading;
 use App\Models\Production;
 use App\Models\User;
 use Livewire\Livewire;
@@ -107,6 +109,43 @@ test('production records can be deleted', function () {
         ->call('deleteProduction');
 
     expect($production->fresh())->toBeNull();
+});
+
+test('production cannot be reduced below eggs already graded', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create();
+    $production = Production::factory()->create([
+        'total_eggs' => 100,
+        'damaged_eggs' => 0,
+    ]);
+    EggGrading::factory()->for($grade)->create(['quantity' => 80]);
+
+    Livewire::actingAs($user)
+        ->test('pages::productions.index')
+        ->call('editProduction', $production->id)
+        ->set('totalEggs', 70)
+        ->call('saveProduction')
+        ->assertHasErrors(['totalEggs']);
+
+    expect($production->refresh()->total_eggs)->toBe(100);
+});
+
+test('production cannot be deleted when its eggs are needed by grading records', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create();
+    $production = Production::factory()->create([
+        'total_eggs' => 100,
+        'damaged_eggs' => 0,
+    ]);
+    EggGrading::factory()->for($grade)->create(['quantity' => 80]);
+
+    Livewire::actingAs($user)
+        ->test('pages::productions.index')
+        ->call('confirmProductionDeletion', $production->id)
+        ->call('deleteProduction')
+        ->assertHasErrors(['deleteProduction']);
+
+    $this->assertModelExists($production);
 });
 
 test('production write actions require authentication', function () {

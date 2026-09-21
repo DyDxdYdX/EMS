@@ -39,6 +39,16 @@ class EggGrade extends Model
             || $this->stockAdjustments()->exists();
     }
 
+    public function stockQuantity(): int
+    {
+        $gradedEggs = (int) $this->gradings()->sum('quantity');
+        $soldEggs = (int) $this->sales()->sum('normalized_egg_quantity');
+        $addedEggs = (int) $this->stockAdjustments()->where('type', 'add')->sum('quantity');
+        $removedEggs = (int) $this->stockAdjustments()->where('type', 'remove')->sum('quantity');
+
+        return $gradedEggs + $addedEggs - $soldEggs - $removedEggs;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

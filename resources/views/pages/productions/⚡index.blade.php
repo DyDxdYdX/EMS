@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\EggGrading;
 use App\Models\Production;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -56,12 +58,22 @@ new #[Title('Daily production')] class extends Component {
             'damaged_eggs' => $validated['damagedEggs'],
             'notes' => filled($validated['notes']) ? $validated['notes'] : null,
         ];
+        $production = $this->editingProductionId === null
+            ? null
+            : Production::query()->findOrFail($this->editingProductionId);
 
-        if ($this->editingProductionId === null) {
+        $this->ensureEnoughEggsRemainForGrading(
+            $production,
+            (int) $validated['totalEggs'],
+            (int) $validated['damagedEggs'],
+            'totalEggs',
+        );
+
+        if ($production === null) {
             Production::query()->create($attributes);
             $message = __('Production record created.');
         } else {
-            Production::query()->findOrFail($this->editingProductionId)->update($attributes);
+            $production->update($attributes);
             $message = __('Production record updated.');
         }
 
@@ -97,6 +109,7 @@ new #[Title('Daily production')] class extends Component {
 
         Production::query()->findOrFail($productionId);
         $this->productionPendingDeletionId = $productionId;
+        $this->resetValidation('deleteProduction');
 
         Flux::modal('delete-production')->show();
     }
@@ -105,7 +118,10 @@ new #[Title('Daily production')] class extends Component {
     {
         $this->ensureAuthenticated();
 
-        Production::query()->findOrFail($this->productionPendingDeletionId)->delete();
+        $production = Production::query()->findOrFail($this->productionPendingDeletionId);
+
+        $this->ensureEnoughEggsRemainForGrading($production, 0, 0, 'deleteProduction');
+        $production->delete();
 
         $this->productionPendingDeletionId = null;
         $this->resetPage();
@@ -144,6 +160,28 @@ new #[Title('Daily production')] class extends Component {
         $this->reset('editingProductionId', 'totalEggs', 'damagedEggs', 'notes');
         $this->productionDate = now()->toDateString();
         $this->resetValidation();
+    }
+
+    private function ensureEnoughEggsRemainForGrading(
+        ?Production $production,
+        int $totalEggs,
+        int $damagedEggs,
+        string $errorKey,
+    ): void
+    {
+        if ($production === null) {
+            return;
+        }
+
+        $currentGradableEggs = $production->total_eggs - $production->damaged_eggs;
+        $newGradableEggs = $totalEggs - $damagedEggs;
+        $projectedAvailableEggs = EggGrading::availableEggQuantity() - $currentGradableEggs + $newGradableEggs;
+
+        if ($projectedAvailableEggs < 0) {
+            throw ValidationException::withMessages([
+                $errorKey => __('This change would leave fewer produced eggs than have already been graded.'),
+            ]);
+        }
     }
 
     private function ensureAuthenticated(): void
@@ -257,6 +295,10 @@ new #[Title('Daily production')] class extends Component {
                 <flux:heading size="lg">{{ __('Delete production record?') }}</flux:heading>
                 <flux:subheading>{{ __('This removes the daily collection record permanently.') }}</flux:subheading>
             </div>
+
+            @error('deleteProduction')
+                <flux:callout variant="danger" icon="exclamation-circle" :heading="$message" />
+            @enderror
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>

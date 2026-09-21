@@ -16,6 +16,9 @@
                 <flux:navbar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
                     {{ __('Production') }}
                 </flux:navbar.item>
+                <flux:navbar.item icon="adjustments-horizontal" :href="route('gradings.index')" :current="request()->routeIs('gradings.*')" wire:navigate>
+                    {{ __('Egg grading') }}
+                </flux:navbar.item>
                 <flux:navbar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                     {{ __('Egg grades') }}
                 </flux:navbar.item>
@@ -64,6 +67,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
                         {{ __('Production') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="adjustments-horizontal" :href="route('gradings.index')" :current="request()->routeIs('gradings.*')" wire:navigate>
+                        {{ __('Egg grading') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                         {{ __('Egg grades') }}

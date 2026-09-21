@@ -20,6 +20,17 @@ class EggGrading extends Model
         return $this->belongsTo(EggGrade::class);
     }
 
+    public static function availableEggQuantity(?self $excluding = null): int
+    {
+        $producedEggs = (int) Production::query()->sum('total_eggs');
+        $damagedEggs = (int) Production::query()->sum('damaged_eggs');
+        $gradedEggs = (int) self::query()->sum('quantity');
+
+        $excludedQuantity = $excluding === null ? 0 : $excluding->quantity;
+
+        return $producedEggs - $damagedEggs - $gradedEggs + $excludedQuantity;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

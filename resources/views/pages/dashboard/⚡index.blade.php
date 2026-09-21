@@ -40,7 +40,8 @@ new #[Title('Dashboard')] class extends Component {
     public function summary(): array
     {
         $sales = Sale::query()
-            ->whereBetween('sale_date', [$this->appliedStartDate, $this->appliedEndDate])
+            ->whereDate('sale_date', '>=', $this->appliedStartDate)
+            ->whereDate('sale_date', '<=', $this->appliedEndDate)
             ->toBase()
             ->selectRaw('COUNT(*) as sale_count')
             ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue')
@@ -48,7 +49,8 @@ new #[Title('Dashboard')] class extends Component {
             ->first();
 
         $expenses = Expense::query()
-            ->whereBetween('expense_date', [$this->appliedStartDate, $this->appliedEndDate])
+            ->whereDate('expense_date', '>=', $this->appliedStartDate)
+            ->whereDate('expense_date', '<=', $this->appliedEndDate)
             ->toBase()
             ->selectRaw('COUNT(*) as expense_count')
             ->selectRaw('COALESCE(SUM(amount), 0) as expenses')
@@ -75,7 +77,8 @@ new #[Title('Dashboard')] class extends Component {
     {
         $rows = DB::table('sales')
             ->join('egg_grades', 'egg_grades.id', '=', 'sales.egg_grade_id')
-            ->whereBetween('sales.sale_date', [$this->appliedStartDate, $this->appliedEndDate])
+            ->whereDate('sales.sale_date', '>=', $this->appliedStartDate)
+            ->whereDate('sales.sale_date', '<=', $this->appliedEndDate)
             ->groupBy('egg_grades.id', 'egg_grades.name')
             ->select('egg_grades.name')
             ->selectRaw('SUM(sales.total_amount) as revenue')
@@ -105,7 +108,8 @@ new #[Title('Dashboard')] class extends Component {
     {
         $rows = DB::table('expenses')
             ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereBetween('expenses.expense_date', [$this->appliedStartDate, $this->appliedEndDate])
+            ->whereDate('expenses.expense_date', '>=', $this->appliedStartDate)
+            ->whereDate('expenses.expense_date', '<=', $this->appliedEndDate)
             ->groupBy('expense_categories.id', 'expense_categories.name')
             ->select('expense_categories.name')
             ->selectRaw('SUM(expenses.amount) as expenses')

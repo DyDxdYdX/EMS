@@ -13,6 +13,9 @@
                 <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
+                <flux:navbar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                    {{ __('Reports') }}
+                </flux:navbar.item>
                 <flux:navbar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
                     {{ __('Production') }}
                 </flux:navbar.item>
@@ -79,6 +82,9 @@
                 <flux:sidebar.group :heading="__('Platform')">
                     <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard')  }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                        {{ __('Reports') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
                         {{ __('Production') }}

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ReportExportController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -11,6 +12,8 @@ Route::get('/', function (): RedirectResponse {
 
 Route::middleware('auth')->group(function () {
     Route::livewire('dashboard', 'pages::dashboard.index')->name('dashboard');
+    Route::livewire('reports', 'pages::reports.index')->name('reports.index');
+    Route::get('reports/exports/{export}', ReportExportController::class)->name('reports.exports');
     Route::livewire('productions', 'pages::productions.index')->name('productions.index');
     Route::livewire('gradings', 'pages::gradings.index')->name('gradings.index');
     Route::livewire('stock-adjustments', 'pages::stock-adjustments.index')->name('stock-adjustments.index');

@@ -15,6 +15,9 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
+                        {{ __('Production') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                         {{ __('Egg grades') }}
                     </flux:sidebar.item>

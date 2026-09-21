@@ -13,6 +13,7 @@ Route::middleware('auth')->group(function () {
     Route::livewire('dashboard', 'pages::dashboard.index')->name('dashboard');
     Route::livewire('productions', 'pages::productions.index')->name('productions.index');
     Route::livewire('gradings', 'pages::gradings.index')->name('gradings.index');
+    Route::livewire('stock-adjustments', 'pages::stock-adjustments.index')->name('stock-adjustments.index');
     Route::livewire('sales', 'pages::sales.index')->name('sales.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('customers', 'pages::customers.index')->name('customers.index');

@@ -21,6 +21,9 @@
                     <flux:sidebar.item icon="adjustments-horizontal" :href="route('gradings.index')" :current="request()->routeIs('gradings.*')" wire:navigate>
                         {{ __('Egg grading') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="arrows-right-left" :href="route('stock-adjustments.index')" :current="request()->routeIs('stock-adjustments.*')" wire:navigate>
+                        {{ __('Stock adjustments') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="shopping-cart" :href="route('sales.index')" :current="request()->routeIs('sales.*')" wire:navigate>
                         {{ __('Sales') }}
                     </flux:sidebar.item>

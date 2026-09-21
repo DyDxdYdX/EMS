@@ -33,6 +33,7 @@ new #[Title('Egg grading')] class extends Component {
     public function mount(): void
     {
         $this->gradingDate = now()->toDateString();
+        $this->eggGradeId = $this->selectableGrades->first()?->id;
     }
 
     /** @return Collection<int, EggGrade> */
@@ -175,7 +176,22 @@ new #[Title('Egg grading')] class extends Component {
     {
         return [
             'gradingDate' => ['required', 'date'],
-            'eggGradeId' => ['required', 'integer', Rule::exists(EggGrade::class, 'id')],
+            'eggGradeId' => [
+                'required',
+                'integer',
+                Rule::exists(EggGrade::class, 'id'),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $duplicateGrading = EggGrading::query()
+                        ->whereDate('grading_date', $this->gradingDate)
+                        ->where('egg_grade_id', $value)
+                        ->when($this->editingGradingId !== null, fn ($query) => $query->where('id', '!=', $this->editingGradingId))
+                        ->exists();
+
+                    if ($duplicateGrading) {
+                        $fail(__('A grading record for this grade on this date already exists.'));
+                    }
+                },
+            ],
             'quantity' => ['required', 'integer', 'min:1'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
@@ -183,8 +199,10 @@ new #[Title('Egg grading')] class extends Component {
 
     private function resetGradingForm(): void
     {
-        $this->reset('editingGradingId', 'eggGradeId', 'quantity', 'notes');
+        $this->reset('editingGradingId', 'quantity', 'notes');
         $this->gradingDate = now()->toDateString();
+        $this->clearComputedData();
+        $this->eggGradeId = $this->selectableGrades->first()?->id;
         $this->resetValidation();
     }
 
@@ -255,7 +273,7 @@ new #[Title('Egg grading')] class extends Component {
 
                 <flux:input wire:model="gradingDate" :label="__('Grading date')" type="date" required />
 
-                <flux:select wire:model="eggGradeId" :label="__('Egg grade')" :placeholder="__('Select a grade')" required>
+                <flux:select wire:model="eggGradeId" :label="__('Egg grade')" required>
                     @foreach ($this->selectableGrades as $grade)
                         <flux:select.option :value="$grade->id" wire:key="grade-option-{{ $grade->id }}">
                             {{ $grade->name }}{{ $grade->is_active ? '' : ' ('.__('Inactive').')' }}

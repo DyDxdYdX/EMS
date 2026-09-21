@@ -202,3 +202,62 @@ test('grading write actions require authentication', function () {
 
     expect(EggGrading::query()->count())->toBe(0);
 });
+
+test('form initializes with the first selectable grade preselected', function () {
+    $user = User::factory()->create();
+    $gradeAa = EggGrade::factory()->create(['name' => 'Grade AA', 'sort_order' => 1]);
+    $gradeA = EggGrade::factory()->create(['name' => 'Grade A', 'sort_order' => 2]);
+    Production::factory()->create(['total_eggs' => 100, 'damaged_eggs' => 0]);
+
+    Livewire::actingAs($user)
+        ->test('pages::gradings.index')
+        ->assertSet('eggGradeId', $gradeAa->id)
+        ->set('quantity', 25)
+        ->call('saveGrading')
+        ->assertHasNoErrors()
+        ->assertSet('eggGradeId', $gradeAa->id);
+
+    $this->assertDatabaseHas('egg_gradings', [
+        'egg_grade_id' => $gradeAa->id,
+        'quantity' => 25,
+    ]);
+});
+
+test('cannot record multiple gradings for the same grade on the same date', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create();
+    Production::factory()->create(['total_eggs' => 100, 'damaged_eggs' => 0]);
+    EggGrading::factory()->for($grade)->create([
+        'grading_date' => '2026-09-21',
+        'quantity' => 40,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::gradings.index')
+        ->set('gradingDate', '2026-09-21')
+        ->set('eggGradeId', $grade->id)
+        ->set('quantity', 10)
+        ->call('saveGrading')
+        ->assertHasErrors(['eggGradeId']);
+
+    expect(EggGrading::query()->count())->toBe(1);
+});
+
+test('editing an existing grading for the same grade and date does not trigger duplicate validation', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create();
+    Production::factory()->create(['total_eggs' => 100, 'damaged_eggs' => 0]);
+    $grading = EggGrading::factory()->for($grade)->create([
+        'grading_date' => '2026-09-21',
+        'quantity' => 40,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::gradings.index')
+        ->call('editGrading', $grading->id)
+        ->set('quantity', 50)
+        ->call('saveGrading')
+        ->assertHasNoErrors();
+
+    expect($grading->fresh()->quantity)->toBe(50);
+});

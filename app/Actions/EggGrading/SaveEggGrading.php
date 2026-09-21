@@ -31,6 +31,18 @@ class SaveEggGrading
                 ]);
             }
 
+            $duplicateGrading = EggGrading::query()
+                ->whereDate('grading_date', $attributes['grading_date'])
+                ->where('egg_grade_id', $attributes['egg_grade_id'])
+                ->when($grading->exists, fn ($query) => $query->where('id', '!=', $grading->id))
+                ->exists();
+
+            if ($duplicateGrading) {
+                throw ValidationException::withMessages([
+                    'eggGradeId' => __('A grading record for this grade on this date already exists.'),
+                ]);
+            }
+
             if ($attributes['quantity'] > EggGrading::availableEggQuantity($grading->exists ? $grading : null)) {
                 throw ValidationException::withMessages([
                     'quantity' => __('The quantity exceeds the eggs available for grading.'),

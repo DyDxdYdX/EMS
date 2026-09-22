@@ -29,7 +29,7 @@ new #[Title('Sales')] class extends Component {
     public string $saleDate = '';
     public ?int $customerId = null;
     public ?int $eggGradeId = null;
-    public string $unit = 'egg';
+    public string $unit = 'tray';
     public int $quantity = 1;
     public string $unitPrice = '0.00';
     public string $notes = '';
@@ -37,6 +37,7 @@ new #[Title('Sales')] class extends Component {
     public function mount(): void
     {
         $this->saleDate = now()->toDateString();
+        $this->eggGradeId = $this->selectableGrades->first()?->id;
     }
 
     /** @return Collection<int, Customer> */
@@ -212,11 +213,14 @@ new #[Title('Sales')] class extends Component {
 
     private function resetSaleForm(): void
     {
-        $this->reset('editingSaleId', 'customerId', 'eggGradeId', 'notes');
+        $this->reset('editingSaleId', 'notes');
+        $this->customerId = null;
         $this->saleDate = now()->toDateString();
-        $this->unit = 'egg';
+        $this->unit = 'tray';
         $this->quantity = 1;
         $this->unitPrice = '0.00';
+        $this->clearComputedData();
+        $this->eggGradeId = $this->selectableGrades->first()?->id;
         $this->resetValidation();
     }
 
@@ -264,7 +268,8 @@ new #[Title('Sales')] class extends Component {
 
                 <flux:input wire:model="saleDate" :label="__('Sale date')" type="date" required />
 
-                <flux:select wire:model="customerId" :label="__('Customer')" :placeholder="__('Walk-in customer')">
+                <flux:select wire:model="customerId" :label="__('Customer')">
+                    <flux:select.option value="">{{ __('Walk-in customer') }}</flux:select.option>
                     @foreach ($this->customers as $customer)
                         <flux:select.option :value="$customer->id" wire:key="customer-option-{{ $customer->id }}">
                             {{ $customer->name }}
@@ -272,7 +277,7 @@ new #[Title('Sales')] class extends Component {
                     @endforeach
                 </flux:select>
 
-                <flux:select wire:model.live="eggGradeId" :label="__('Egg grade')" :placeholder="__('Select a grade')" required>
+                <flux:select wire:model.live="eggGradeId" :label="__('Egg grade')" required>
                     @foreach ($this->selectableGrades as $grade)
                         <flux:select.option :value="$grade->id" wire:key="sale-grade-option-{{ $grade->id }}">
                             {{ $grade->name }}{{ $grade->is_active ? '' : ' ('.__('Inactive').')' }}
@@ -282,8 +287,8 @@ new #[Title('Sales')] class extends Component {
 
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                     <flux:select wire:model.live="unit" :label="__('Unit')" required>
-                        <flux:select.option value="egg">{{ __('Egg') }}</flux:select.option>
                         <flux:select.option value="tray">{{ __('Tray') }}</flux:select.option>
+                        <flux:select.option value="egg">{{ __('Egg') }}</flux:select.option>
                     </flux:select>
                     <flux:input wire:model.live="quantity" :label="__('Quantity')" type="number" min="1" required />
                 </div>

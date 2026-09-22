@@ -70,11 +70,14 @@ test('tray sales use the configured eggs per tray', function () {
 
 test('sales can be recorded for walk-in customers', function () {
     $user = User::factory()->create();
+    $customer = Customer::factory()->create();
     $grade = EggGrade::factory()->create();
-    EggGrading::factory()->for($grade)->create(['quantity' => 20]);
+    EggGrading::factory()->for($grade)->create(['quantity' => 200]);
 
     Livewire::actingAs($user)
         ->test('pages::sales.index')
+        ->set('customerId', $customer->id)
+        ->set('customerId', '')
         ->set('saleDate', '2026-09-21')
         ->set('eggGradeId', $grade->id)
         ->set('quantity', 5)
@@ -83,6 +86,17 @@ test('sales can be recorded for walk-in customers', function () {
         ->assertHasNoErrors();
 
     expect(Sale::query()->sole()->customer_id)->toBeNull();
+});
+
+test('sales form defaults unit to tray and preselects first egg grade', function () {
+    $user = User::factory()->create();
+    $gradeAa = EggGrade::factory()->create(['name' => 'Grade AA', 'sort_order' => 1]);
+    $gradeA = EggGrade::factory()->create(['name' => 'Grade A', 'sort_order' => 2]);
+
+    Livewire::actingAs($user)
+        ->test('pages::sales.index')
+        ->assertSet('unit', 'tray')
+        ->assertSet('eggGradeId', $gradeAa->id);
 });
 
 test('sales cannot exceed available grade stock', function () {

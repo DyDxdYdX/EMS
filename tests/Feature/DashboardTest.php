@@ -19,6 +19,7 @@ test('authenticated users can visit the dashboard', function () {
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Profit and loss')
+        ->assertSee('No financial activity in this period')
         ->assertSee('No sales in this period')
         ->assertSee('No expenses in this period');
 });
@@ -101,6 +102,28 @@ test('dashboard applies a custom reporting period', function () {
     $component
         ->call('resetPeriod')
         ->assertSet('appliedStartDate', '2026-09-01')
+        ->assertSet('appliedEndDate', '2026-09-21');
+});
+
+test('dashboard applies preset reporting periods', function () {
+    $this->travelTo('2026-09-21 12:00:00');
+
+    $user = User::factory()->create();
+
+    $component = Livewire::actingAs($user)
+        ->test('pages::dashboard.index')
+        ->set('period', 'last_7_days')
+        ->assertSet('appliedStartDate', '2026-09-15')
+        ->assertSet('appliedEndDate', '2026-09-21');
+
+    $component
+        ->set('period', 'today')
+        ->assertSet('appliedStartDate', '2026-09-21')
+        ->assertSet('appliedEndDate', '2026-09-21');
+
+    $component
+        ->set('period', 'this_year')
+        ->assertSet('appliedStartDate', '2026-01-01')
         ->assertSet('appliedEndDate', '2026-09-21');
 });
 

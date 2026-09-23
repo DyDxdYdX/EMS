@@ -6,6 +6,7 @@ use App\Models\EggGrading;
 use App\Models\Production;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
@@ -14,6 +15,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Dashboard')] class extends Component {
+    public string $period = 'this_month';
     public string $startDate = '';
     public string $endDate = '';
 
@@ -31,9 +33,12 @@ new #[Title('Dashboard')] class extends Component {
     /**
      * @return array{
      *     revenue: string,
+     *     revenue_cents: int,
      *     expenses: string,
+     *     expense_cents: int,
      *     net_profit: string,
      *     net_profit_cents: int,
+     *     profit_margin: float,
      *     sale_count: int,
      *     expense_count: int,
      *     eggs_sold: int
@@ -65,13 +70,77 @@ new #[Title('Dashboard')] class extends Component {
 
         return [
             'revenue' => $this->formatCents($revenueCents),
+            'revenue_cents' => $revenueCents,
             'expenses' => $this->formatCents($expenseCents),
+            'expense_cents' => $expenseCents,
             'net_profit' => $this->formatCents($netProfitCents),
             'net_profit_cents' => $netProfitCents,
+            'profit_margin' => $revenueCents === 0 ? 0.0 : round(($netProfitCents / $revenueCents) * 100, 1),
             'sale_count' => (int) ($sales?->sale_count ?? 0),
             'expense_count' => (int) ($expenses?->expense_count ?? 0),
             'eggs_sold' => (int) ($sales?->eggs_sold ?? 0),
         ];
+    }
+
+    /** @return array{title: string, description: string, tone: string} */
+    #[Computed]
+    public function financialInsight(): array
+    {
+        $summary = $this->summary;
+
+        if ($summary['revenue_cents'] === 0 && $summary['expense_cents'] === 0) {
+            return [
+                'title' => __('No financial activity in this period'),
+                'description' => __('Record sales and expenses to see a clear profitability insight.'),
+                'tone' => 'neutral',
+            ];
+        }
+
+        if ($summary['revenue_cents'] === 0) {
+            return [
+                'title' => __('Costs recorded before revenue'),
+                'description' => __('There are RM :expenses in expenses and no sales revenue for this period.', ['expenses' => $summary['expenses']]),
+                'tone' => 'warning',
+            ];
+        }
+
+        if ($summary['net_profit_cents'] < 0) {
+            return [
+                'title' => __('Expenses are higher than sales'),
+                'description' => __('Costs exceed revenue by RM :amount. Review the largest expense categories below.', ['amount' => $this->formatCents(abs($summary['net_profit_cents']))]),
+                'tone' => 'danger',
+            ];
+        }
+
+        if ($summary['net_profit_cents'] === 0) {
+            return [
+                'title' => __('The farm broke even'),
+                'description' => __('Sales revenue covered operating expenses exactly for this period.'),
+                'tone' => 'neutral',
+            ];
+        }
+
+        return [
+            'title' => __('The farm made a profit'),
+            'description' => __('RM :profit remains after expenses, a :margin% margin on sales revenue.', [
+                'profit' => $summary['net_profit'],
+                'margin' => number_format($summary['profit_margin'], 1),
+            ]),
+            'tone' => 'success',
+        ];
+    }
+
+    #[Computed]
+    public function periodLabel(): string
+    {
+        $start = Carbon::parse($this->appliedStartDate);
+        $end = Carbon::parse($this->appliedEndDate);
+
+        if ($start->isSameDay($end)) {
+            return $start->format('d M Y');
+        }
+
+        return $start->format('d M Y').' – '.$end->format('d M Y');
     }
 
     /** @return array{collected: int, damaged: int, ready_to_grade: int, graded: int, sales: int} */
@@ -187,6 +256,27 @@ new #[Title('Dashboard')] class extends Component {
 
         $this->appliedStartDate = $validated['startDate'];
         $this->appliedEndDate = $validated['endDate'];
+        $this->period = 'custom';
+        $this->clearReport();
+    }
+
+    public function updatedPeriod(): void
+    {
+        $this->ensureAuthenticated();
+
+        if (! in_array($this->period, ['today', 'last_7_days', 'this_month', 'this_year', 'custom'], true)) {
+            $this->period = 'this_month';
+        }
+
+        match ($this->period) {
+            'today' => $this->setPeriod(now()->toDateString(), now()->toDateString()),
+            'last_7_days' => $this->setPeriod(now()->subDays(6)->toDateString(), now()->toDateString()),
+            'this_year' => $this->setPeriod(now()->startOfYear()->toDateString(), now()->toDateString()),
+            'custom' => null,
+            default => $this->setCurrentMonth(),
+        };
+
+        $this->resetValidation();
         $this->clearReport();
     }
 
@@ -201,8 +291,14 @@ new #[Title('Dashboard')] class extends Component {
 
     private function setCurrentMonth(): void
     {
-        $this->startDate = now()->startOfMonth()->toDateString();
-        $this->endDate = now()->toDateString();
+        $this->period = 'this_month';
+        $this->setPeriod(now()->startOfMonth()->toDateString(), now()->toDateString());
+    }
+
+    private function setPeriod(string $startDate, string $endDate): void
+    {
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
         $this->appliedStartDate = $this->startDate;
         $this->appliedEndDate = $this->endDate;
     }
@@ -234,7 +330,7 @@ new #[Title('Dashboard')] class extends Component {
 
     private function clearReport(): void
     {
-        unset($this->summary, $this->salesByGrade, $this->expensesByCategory);
+        unset($this->summary, $this->financialInsight, $this->periodLabel, $this->salesByGrade, $this->expensesByCategory);
     }
 
     private function ensureAuthenticated(): void
@@ -247,10 +343,158 @@ new #[Title('Dashboard')] class extends Component {
 <section class="page-shell">
     <div class="page-header">
         <div>
-            <flux:heading size="xl" level="1">{{ __('Farm overview') }}</flux:heading>
-            <flux:subheading>{{ __('Today’s production, grading progress, stock, and business performance.') }}</flux:subheading>
+            <flux:heading size="xl" level="1">{{ __('Profit and loss') }}</flux:heading>
+            <flux:subheading>{{ __('See whether the farm made money and understand what drove the result.') }}</flux:subheading>
+            <flux:text class="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ $this->periodLabel }}</flux:text>
         </div>
 
+        <form wire:submit="applyPeriod" class="grid w-full gap-3 sm:grid-cols-2 sm:items-end lg:w-auto lg:grid-cols-[12rem_auto_auto_auto]">
+            <flux:select wire:model.change.live="period" :label="__('Time range')">
+                <flux:select.option value="today">{{ __('Today') }}</flux:select.option>
+                <flux:select.option value="last_7_days">{{ __('Last 7 days') }}</flux:select.option>
+                <flux:select.option value="this_month">{{ __('This month') }}</flux:select.option>
+                <flux:select.option value="this_year">{{ __('This year') }}</flux:select.option>
+                <flux:select.option value="custom">{{ __('Custom range') }}</flux:select.option>
+            </flux:select>
+
+            @if ($period === 'custom')
+                <flux:input wire:model="startDate" :label="__('From')" type="date" required />
+                <flux:input wire:model="endDate" :label="__('To')" type="date" required />
+                <flux:button class="action-button" type="submit" variant="primary">{{ __('Apply') }}</flux:button>
+            @endif
+        </form>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <flux:card class="metric-card space-y-5 sm:col-span-2">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <flux:text>{{ __('Net result') }}</flux:text>
+                    <flux:heading size="xl" class="mt-1 text-3xl" :class="$this->summary['net_profit_cents'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
+                        {{ __('RM :amount', ['amount' => $this->summary['net_profit']]) }}
+                    </flux:heading>
+                </div>
+                <flux:badge :color="$this->summary['net_profit_cents'] >= 0 ? 'green' : 'red'">
+                    {{ $this->summary['net_profit_cents'] > 0 ? __('Profit') : ($this->summary['net_profit_cents'] < 0 ? __('Loss') : __('Break-even')) }}
+                </flux:badge>
+            </div>
+
+            <div class="flex flex-wrap gap-x-6 gap-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <div>
+                    <flux:text class="text-xs">{{ __('Profit margin') }}</flux:text>
+                    <flux:text class="font-semibold">{{ number_format($this->summary['profit_margin'], 1) }}%</flux:text>
+                </div>
+                <div>
+                    <flux:text class="text-xs">{{ __('Eggs sold') }}</flux:text>
+                    <flux:text class="font-semibold">{{ number_format($this->summary['eggs_sold']) }}</flux:text>
+                </div>
+            </div>
+        </flux:card>
+
+        <flux:card class="metric-card space-y-3">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <flux:text>{{ __('Sales revenue') }}</flux:text>
+                    <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['revenue']]) }}</flux:heading>
+                </div>
+                <div class="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                    <flux:icon name="arrow-trending-up" class="size-5" />
+                </div>
+            </div>
+            <flux:text class="text-xs">{{ trans_choice(':count recorded sale|:count recorded sales', $this->summary['sale_count'], ['count' => number_format($this->summary['sale_count'])]) }}</flux:text>
+        </flux:card>
+
+        <flux:card class="metric-card space-y-3">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <flux:text>{{ __('Operating expenses') }}</flux:text>
+                    <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['expenses']]) }}</flux:heading>
+                </div>
+                <div class="rounded-xl bg-rose-100 p-2 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                    <flux:icon name="arrow-trending-down" class="size-5" />
+                </div>
+            </div>
+            <flux:text class="text-xs">{{ trans_choice(':count recorded expense|:count recorded expenses', $this->summary['expense_count'], ['count' => number_format($this->summary['expense_count'])]) }}</flux:text>
+        </flux:card>
+    </div>
+
+    <div @class([
+        'flex items-start gap-3 rounded-xl border p-4',
+        'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40' => $this->financialInsight['tone'] === 'success',
+        'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40' => $this->financialInsight['tone'] === 'danger',
+        'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40' => $this->financialInsight['tone'] === 'warning',
+        'border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900' => $this->financialInsight['tone'] === 'neutral',
+    ])>
+        <flux:icon :name="$this->financialInsight['tone'] === 'success' ? 'check-circle' : ($this->financialInsight['tone'] === 'danger' ? 'exclamation-triangle' : 'information-circle')" class="mt-0.5 size-5 shrink-0" />
+        <div>
+            <flux:heading size="sm">{{ $this->financialInsight['title'] }}</flux:heading>
+            <flux:text class="mt-1 text-sm">{{ $this->financialInsight['description'] }}</flux:text>
+        </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <flux:card class="data-panel space-y-4">
+            <div>
+                <flux:heading size="lg">{{ __('Where revenue came from') }}</flux:heading>
+                <flux:subheading>{{ __('Sales grouped by egg grade for the selected time range.') }}</flux:subheading>
+            </div>
+            @if ($this->salesByGrade->isEmpty())
+                <div class="empty-state py-6">
+                    <flux:heading>{{ __('No sales in this period') }}</flux:heading>
+                    <flux:subheading>{{ __('Choose another time range or record a sale.') }}</flux:subheading>
+                    <flux:button class="mt-3" size="sm" :href="route('sales.index')" wire:navigate>{{ __('Record a sale') }}</flux:button>
+                </div>
+            @else
+                @foreach ($this->salesByGrade as $grade)
+                    <div class="space-y-2" wire:key="sales-grade-{{ $grade['name'] }}">
+                        <div class="flex justify-between gap-4">
+                            <div>
+                                <flux:text class="font-medium">{{ $grade['name'] }}</flux:text>
+                                <flux:text class="text-xs">{{ number_format($grade['eggs_sold']) }} {{ __('eggs sold') }}</flux:text>
+                            </div>
+                            <flux:text class="font-semibold">{{ __('RM :amount', ['amount' => $grade['revenue']]) }}</flux:text>
+                        </div>
+                        <flux:progress :value="$grade['percentage']" />
+                    </div>
+                @endforeach
+            @endif
+        </flux:card>
+
+        <flux:card class="data-panel space-y-4">
+            <div>
+                <flux:heading size="lg">{{ __('Where money was spent') }}</flux:heading>
+                <flux:subheading>{{ __('Operating expenses grouped by category for the selected time range.') }}</flux:subheading>
+            </div>
+            @if ($this->expensesByCategory->isEmpty())
+                <div class="empty-state py-6">
+                    <flux:heading>{{ __('No expenses in this period') }}</flux:heading>
+                    <flux:subheading>{{ __('Choose another time range or record an expense.') }}</flux:subheading>
+                    <flux:button class="mt-3" size="sm" :href="route('expenses.index')" wire:navigate>{{ __('Record an expense') }}</flux:button>
+                </div>
+            @else
+                @foreach ($this->expensesByCategory as $category)
+                    <div class="space-y-2" wire:key="expense-category-{{ $category['name'] }}">
+                        <div class="flex justify-between gap-4">
+                            <div>
+                                <flux:text class="font-medium">{{ $category['name'] }}</flux:text>
+                                <flux:text class="text-xs">{{ trans_choice(':count entry|:count entries', $category['expense_count'], ['count' => number_format($category['expense_count'])]) }}</flux:text>
+                            </div>
+                            <flux:text class="font-semibold">{{ __('RM :amount', ['amount' => $category['expenses']]) }}</flux:text>
+                        </div>
+                        <flux:progress :value="$category['percentage']" />
+                    </div>
+                @endforeach
+            @endif
+        </flux:card>
+    </div>
+
+    <flux:separator />
+
+    <div class="page-header">
+        <div>
+            <flux:heading size="lg" level="2">{{ __('Farm operations today') }}</flux:heading>
+            <flux:subheading>{{ __('Production, grading, and stock that may need your attention.') }}</flux:subheading>
+        </div>
         <div class="flex flex-wrap gap-2">
             <flux:button icon="clipboard-document-list" :href="route('productions.index')" wire:navigate>{{ __('Record production') }}</flux:button>
             <flux:button icon="adjustments-horizontal" :href="route('gradings.index')" wire:navigate>{{ __('Grade eggs') }}</flux:button>
@@ -258,59 +502,21 @@ new #[Title('Dashboard')] class extends Component {
         </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <flux:card class="metric-card space-y-3">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <flux:text>{{ __('Collected today') }}</flux:text>
-                    <flux:heading size="xl">{{ number_format($this->today['collected']) }}</flux:heading>
-                </div>
-                <div class="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                    <flux:icon name="clipboard-document-list" class="size-5" />
-                </div>
-            </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+        <flux:card class="metric-card space-y-2">
+            <flux:text>{{ __('Collected today') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->today['collected']) }}</flux:heading>
             <flux:text class="text-xs">{{ trans_choice(':count damaged egg|:count damaged eggs', $this->today['damaged'], ['count' => number_format($this->today['damaged'])]) }}</flux:text>
         </flux:card>
-
-        <flux:card class="metric-card space-y-3">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <flux:text>{{ __('Waiting for grading') }}</flux:text>
-                    <flux:heading size="xl">{{ number_format($this->today['ready_to_grade']) }}</flux:heading>
-                </div>
-                <div class="rounded-xl bg-amber-100 p-2 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                    <flux:icon name="adjustments-horizontal" class="size-5" />
-                </div>
-            </div>
+        <flux:card class="metric-card space-y-2">
+            <flux:text>{{ __('Waiting for grading') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->today['ready_to_grade']) }}</flux:heading>
             <flux:text class="text-xs">{{ number_format($this->today['graded']) }} {{ __('graded today') }}</flux:text>
         </flux:card>
-
-        <flux:card class="metric-card space-y-3">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <flux:text>{{ __('Sales today') }}</flux:text>
-                    <flux:heading size="xl">{{ number_format($this->today['sales']) }}</flux:heading>
-                </div>
-                <div class="rounded-xl bg-sky-100 p-2 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                    <flux:icon name="shopping-cart" class="size-5" />
-                </div>
-            </div>
-            <flux:text class="text-xs">{{ number_format($this->summary['eggs_sold']) }} {{ __('eggs sold this period') }}</flux:text>
-        </flux:card>
-
-        <flux:card class="metric-card space-y-3">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <flux:text>{{ __('Net profit') }}</flux:text>
-                    <flux:heading size="xl" :class="$this->summary['net_profit_cents'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
-                        {{ __('RM :amount', ['amount' => $this->summary['net_profit']]) }}
-                    </flux:heading>
-                </div>
-                <flux:badge :color="$this->summary['net_profit_cents'] >= 0 ? 'green' : 'red'" size="sm">
-                    {{ $this->summary['net_profit_cents'] >= 0 ? __('Profit') : __('Loss') }}
-                </flux:badge>
-            </div>
-            <flux:text class="text-xs">{{ __('Current reporting period') }}</flux:text>
+        <flux:card class="metric-card space-y-2">
+            <flux:text>{{ __('Sales today') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->today['sales']) }}</flux:heading>
+            <flux:text class="text-xs">{{ __('Recorded sale transactions') }}</flux:text>
         </flux:card>
     </div>
 
@@ -323,11 +529,9 @@ new #[Title('Dashboard')] class extends Component {
                 </div>
                 <flux:button size="sm" variant="ghost" :href="route('stock-adjustments.index')" wire:navigate>{{ __('Manage stock') }}</flux:button>
             </div>
-
             @if ($this->stockLevels->isEmpty())
                 <div class="empty-state">
                     <flux:heading>{{ __('No egg grades configured') }}</flux:heading>
-                    <flux:subheading>{{ __('Create an egg grade before recording graded stock.') }}</flux:subheading>
                     <flux:button class="mt-4" size="sm" :href="route('egg-grades.index')" wire:navigate>{{ __('Configure egg grades') }}</flux:button>
                 </div>
             @else
@@ -355,122 +559,25 @@ new #[Title('Dashboard')] class extends Component {
                 <flux:heading size="lg">{{ __('Needs attention') }}</flux:heading>
                 <flux:subheading>{{ __('A quick check before you continue.') }}</flux:subheading>
             </div>
-
             <div class="space-y-3">
                 @if ($this->today['collected'] === 0)
                     <div class="rounded-xl bg-amber-50 p-4 dark:bg-amber-950/40">
                         <flux:heading size="sm">{{ __('No production recorded today') }}</flux:heading>
                         <flux:text class="mt-1 text-sm">{{ __('Record today’s collection to keep grading availability accurate.') }}</flux:text>
-                        <flux:button class="mt-3" size="sm" variant="ghost" :href="route('productions.index')" wire:navigate>{{ __('Record production') }}</flux:button>
                     </div>
                 @endif
-
                 @if ($this->today['ready_to_grade'] > 0)
                     <div class="rounded-xl bg-sky-50 p-4 dark:bg-sky-950/40">
                         <flux:heading size="sm">{{ trans_choice(':count egg is waiting for grading|:count eggs are waiting for grading', $this->today['ready_to_grade'], ['count' => number_format($this->today['ready_to_grade'])]) }}</flux:heading>
-                        <flux:button class="mt-3" size="sm" variant="ghost" :href="route('gradings.index')" wire:navigate>{{ __('Grade now') }}</flux:button>
                     </div>
                 @endif
-
                 @if ($this->stockLevels->where('is_low', true)->isNotEmpty())
                     <div class="rounded-xl bg-red-50 p-4 dark:bg-red-950/30">
                         <flux:heading size="sm">{{ trans_choice(':count grade has low stock|:count grades have low stock', $this->stockLevels->where('is_low', true)->count(), ['count' => $this->stockLevels->where('is_low', true)->count()]) }}</flux:heading>
                         <flux:text class="mt-1 text-sm">{{ $this->stockLevels->where('is_low', true)->pluck('name')->join(', ') }}</flux:text>
                     </div>
                 @endif
-
-                @if ($this->today['collected'] > 0 && $this->today['ready_to_grade'] === 0 && $this->stockLevels->where('is_low', true)->isEmpty())
-                    <div class="empty-state py-7">
-                        <flux:icon name="check-circle" class="mx-auto mb-2 size-6 text-emerald-600" />
-                        <flux:heading>{{ __('Everything looks up to date') }}</flux:heading>
-                        <flux:subheading>{{ __('There are no operational alerts right now.') }}</flux:subheading>
-                    </div>
-                @endif
             </div>
         </flux:card>
     </div>
-
-    <flux:card class="data-panel space-y-5">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-                <flux:heading size="lg">{{ __('Profit and loss') }}</flux:heading>
-                <flux:subheading>{{ __('Review revenue and operating costs for a selected period.') }}</flux:subheading>
-            </div>
-
-            <form wire:submit="applyPeriod" class="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,10rem)_auto_auto] sm:items-end">
-                <flux:input wire:model="startDate" :label="__('From')" type="date" required />
-                <flux:input wire:model="endDate" :label="__('To')" type="date" required />
-                <flux:button class="action-button" type="submit" variant="primary">{{ __('Apply') }}</flux:button>
-                <flux:button class="action-button" type="button" variant="ghost" wire:click="resetPeriod">{{ __('This month') }}</flux:button>
-            </form>
-        </div>
-
-        <div class="grid gap-4 sm:grid-cols-3">
-            <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800">
-                <flux:text>{{ __('Sales revenue') }}</flux:text>
-                <flux:heading size="lg">{{ __('RM :amount', ['amount' => $this->summary['revenue']]) }}</flux:heading>
-                <flux:text class="text-xs">{{ trans_choice(':count sale|:count sales', $this->summary['sale_count'], ['count' => number_format($this->summary['sale_count'])]) }}</flux:text>
-            </div>
-            <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800">
-                <flux:text>{{ __('Operating expenses') }}</flux:text>
-                <flux:heading size="lg">{{ __('RM :amount', ['amount' => $this->summary['expenses']]) }}</flux:heading>
-                <flux:text class="text-xs">{{ trans_choice(':count entry|:count entries', $this->summary['expense_count'], ['count' => number_format($this->summary['expense_count'])]) }}</flux:text>
-            </div>
-            <div class="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800">
-                <flux:text>{{ __('Net profit') }}</flux:text>
-                <flux:heading size="lg" :class="$this->summary['net_profit_cents'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">{{ __('RM :amount', ['amount' => $this->summary['net_profit']]) }}</flux:heading>
-                <flux:text class="text-xs">{{ number_format($this->summary['eggs_sold']) }} {{ __('eggs sold') }}</flux:text>
-            </div>
-        </div>
-
-        <div class="grid gap-6 xl:grid-cols-2">
-            <div class="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
-                <div>
-                    <flux:heading>{{ __('Revenue by egg grade') }}</flux:heading>
-                    <flux:subheading>{{ __('Sales performance within the selected period.') }}</flux:subheading>
-                </div>
-                @if ($this->salesByGrade->isEmpty())
-                    <div class="empty-state py-6">
-                        <flux:heading>{{ __('No sales in this period') }}</flux:heading>
-                        <flux:subheading>{{ __('Change the dates or record a sale to see revenue.') }}</flux:subheading>
-                        <flux:button class="mt-3" size="sm" :href="route('sales.index')" wire:navigate>{{ __('Record a sale') }}</flux:button>
-                    </div>
-                @else
-                    @foreach ($this->salesByGrade as $grade)
-                        <div class="space-y-2" wire:key="sales-grade-{{ $grade['name'] }}">
-                            <div class="flex justify-between gap-4">
-                                <flux:text>{{ $grade['name'] }}</flux:text>
-                                <flux:text class="font-medium">{{ __('RM :amount', ['amount' => $grade['revenue']]) }}</flux:text>
-                            </div>
-                            <flux:progress :value="$grade['percentage']" />
-                        </div>
-                    @endforeach
-                @endif
-            </div>
-
-            <div class="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
-                <div>
-                    <flux:heading>{{ __('Expenses by category') }}</flux:heading>
-                    <flux:subheading>{{ __('Where operating costs were spent.') }}</flux:subheading>
-                </div>
-                @if ($this->expensesByCategory->isEmpty())
-                    <div class="empty-state py-6">
-                        <flux:heading>{{ __('No expenses in this period') }}</flux:heading>
-                        <flux:subheading>{{ __('Change the dates or record an expense to see costs.') }}</flux:subheading>
-                        <flux:button class="mt-3" size="sm" :href="route('expenses.index')" wire:navigate>{{ __('Record an expense') }}</flux:button>
-                    </div>
-                @else
-                    @foreach ($this->expensesByCategory as $category)
-                        <div class="space-y-2" wire:key="expense-category-{{ $category['name'] }}">
-                            <div class="flex justify-between gap-4">
-                                <flux:text>{{ $category['name'] }}</flux:text>
-                                <flux:text class="font-medium">{{ __('RM :amount', ['amount' => $category['expenses']]) }}</flux:text>
-                            </div>
-                            <flux:progress :value="$category['percentage']" />
-                        </div>
-                    @endforeach
-                @endif
-            </div>
-        </div>
-    </flux:card>
 </section>

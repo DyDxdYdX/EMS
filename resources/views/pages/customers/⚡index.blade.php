@@ -3,6 +3,7 @@
 use App\Models\Customer;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -22,6 +23,7 @@ new #[Title('Customers')] class extends Component {
     public string $name = '';
     public string $phone = '';
     public string $notes = '';
+    public string $search = '';
 
     /** @return LengthAwarePaginator<int, Customer> */
     #[Computed]
@@ -29,9 +31,21 @@ new #[Title('Customers')] class extends Component {
     {
         return Customer::query()
             ->withCount('sales')
+            ->when(filled($this->search), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query->where('name', 'like', '%'.$this->search.'%')
+                        ->orWhere('phone', 'like', '%'.$this->search.'%');
+                });
+            })
             ->orderBy('name')
             ->orderBy('id')
             ->paginate(15);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+        unset($this->customers);
     }
 
     public function saveCustomer(): void
@@ -56,6 +70,7 @@ new #[Title('Customers')] class extends Component {
         $this->resetCustomerForm();
         $this->resetPage();
         unset($this->customers);
+        Flux::modal('customer-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -71,11 +86,13 @@ new #[Title('Customers')] class extends Component {
         $this->phone = $customer->phone ?? '';
         $this->notes = $customer->notes ?? '';
         $this->resetValidation();
+        Flux::modal('customer-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetCustomerForm();
+        Flux::modal('customer-form')->close();
     }
 
     public function confirmCustomerDeletion(int $customerId): void
@@ -124,14 +141,18 @@ new #[Title('Customers')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div>
-        <flux:heading size="xl" level="1">{{ __('Customers') }}</flux:heading>
-        <flux:subheading>{{ __('Maintain optional customer details for sales records.') }}</flux:subheading>
+<section class="page-shell">
+    <div class="page-header">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('Customers') }}</flux:heading>
+            <flux:subheading>{{ __('Maintain optional customer details for sales records.') }}</flux:subheading>
+        </div>
+        <flux:modal.trigger name="customer-form">
+            <flux:button variant="primary" icon="plus">{{ __('Add customer') }}</flux:button>
+        </flux:modal.trigger>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="customer-form" class="max-w-xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveCustomer" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -145,24 +166,28 @@ new #[Title('Customers')] class extends Component {
                 <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" placeholder="Optional customer notes" />
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingCustomerId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" data-test="save-customer">
+                    <flux:button class="action-button" variant="primary" type="submit" data-test="save-customer">
                         {{ $editingCustomerId === null ? __('Add customer') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel space-y-4">
+            <div class="flex justify-end">
+                <flux:input class="w-full sm:max-w-xs" wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search customers" aria-label="Search customers" clearable />
+            </div>
             @if ($this->customers->isEmpty())
-                <div class="py-10 text-center">
-                    <flux:heading>{{ __('No customers yet') }}</flux:heading>
-                    <flux:subheading>{{ __('Add a customer now or continue using walk-in sales.') }}</flux:subheading>
+                <div class="empty-state">
+                    <flux:heading>{{ filled($search) ? __('No customers found') : __('No customers yet') }}</flux:heading>
+                    <flux:subheading>{{ filled($search) ? __('Try a different name or phone number.') : __('Add a customer now or continue using walk-in sales.') }}</flux:subheading>
+                    @unless (filled($search))
+                    <flux:modal.trigger name="customer-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Add customer') }}</flux:button>
+                    </flux:modal.trigger>
+                    @endunless
                 </div>
             @else
                 <flux:table :paginate="$this->customers">
@@ -203,8 +228,7 @@ new #[Title('Customers')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-customer" class="max-w-lg">
         <div class="space-y-6">

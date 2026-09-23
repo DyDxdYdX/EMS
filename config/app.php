@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'display_name' => env('APP_DISPLAY_NAME', 'Egg Farm Manager'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

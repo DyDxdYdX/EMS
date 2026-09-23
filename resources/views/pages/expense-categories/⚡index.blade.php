@@ -53,6 +53,7 @@ new #[Title('Expense categories')] class extends Component {
 
         $this->resetCategoryForm();
         unset($this->categories);
+        Flux::modal('category-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -68,11 +69,13 @@ new #[Title('Expense categories')] class extends Component {
         $this->sortOrder = $category->sort_order;
         $this->isActive = $category->is_active;
         $this->resetValidation();
+        Flux::modal('category-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetCategoryForm();
+        Flux::modal('category-form')->close();
     }
 
     public function toggleCategory(int $categoryId): void
@@ -151,14 +154,18 @@ new #[Title('Expense categories')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div>
-        <flux:heading size="xl" level="1">{{ __('Expense categories') }}</flux:heading>
-        <flux:subheading>{{ __('Organize farm costs for clear profit and loss reporting.') }}</flux:subheading>
+<section class="page-shell max-w-6xl">
+    <div class="page-header">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('Expense categories') }}</flux:heading>
+            <flux:subheading>{{ __('Organize farm costs for clear profit and loss reporting.') }}</flux:subheading>
+        </div>
+        <flux:modal.trigger name="category-form">
+            <flux:button variant="primary" icon="plus">{{ __('Add category') }}</flux:button>
+        </flux:modal.trigger>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="category-form" class="max-w-xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveCategory" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -172,24 +179,23 @@ new #[Title('Expense categories')] class extends Component {
                 <flux:switch wire:model="isActive" :label="__('Active')" />
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingCategoryId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" data-test="save-expense-category">
+                    <flux:button class="action-button" variant="primary" type="submit" data-test="save-expense-category">
                         {{ $editingCategoryId === null ? __('Add category') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel">
             @if ($this->categories->isEmpty())
-                <div class="py-10 text-center">
+                <div class="empty-state">
                     <flux:heading>{{ __('No expense categories yet') }}</flux:heading>
-                    <flux:subheading>{{ __('Add the first category using the form.') }}</flux:subheading>
+                    <flux:subheading>{{ __('Add the first category to organize farm costs.') }}</flux:subheading>
+                    <flux:modal.trigger name="category-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Add category') }}</flux:button>
+                    </flux:modal.trigger>
                 </div>
             @else
                 <flux:table>
@@ -235,8 +241,7 @@ new #[Title('Expense categories')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-expense-category" class="max-w-lg">
         <div class="space-y-6">

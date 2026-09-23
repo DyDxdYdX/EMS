@@ -23,16 +23,42 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    --color-accent: var(--color-emerald-700);
+    --color-accent-content: var(--color-emerald-700);
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-emerald-400);
+        --color-accent-content: var(--color-emerald-400);
+        --color-accent-foreground: var(--color-emerald-950);
+    }
+}
+
+@layer components {
+    .page-shell {
+        @apply mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-8;
+    }
+
+    .page-header {
+        @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between;
+    }
+
+    .metric-card {
+        @apply relative overflow-hidden border-zinc-200/80 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .empty-state {
+        @apply rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-9 text-center dark:border-zinc-700 dark:bg-zinc-800/40;
+    }
+
+    .data-panel {
+        @apply min-w-0 overflow-x-auto border-zinc-200/80 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .action-button {
+        @apply data-loading:pointer-events-none data-loading:opacity-60;
     }
 }
 

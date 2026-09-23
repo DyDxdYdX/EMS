@@ -122,6 +122,7 @@ new #[Title('Egg grading')] class extends Component {
         $this->resetGradingForm();
         $this->resetPage();
         $this->clearComputedData();
+        Flux::modal('grading-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -139,12 +140,14 @@ new #[Title('Egg grading')] class extends Component {
         $this->notes = $grading->notes ?? '';
         $this->resetValidation();
         $this->clearComputedData();
+        Flux::modal('grading-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetGradingForm();
         $this->clearComputedData();
+        Flux::modal('grading-form')->close();
     }
 
     public function confirmGradingDeletion(int $gradingId): void
@@ -218,23 +221,28 @@ new #[Title('Egg grading')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+<section class="page-shell">
+    <div class="page-header">
         <div>
             <flux:heading size="xl" level="1">{{ __('Egg grading') }}</flux:heading>
             <flux:subheading>{{ __('Turn collected eggs into grade-level sellable stock.') }}</flux:subheading>
         </div>
 
-        <div class="rounded-lg bg-zinc-100 px-4 py-3 text-start sm:text-end dark:bg-zinc-800">
-            <flux:text class="text-sm">{{ __('Ungraded eggs available') }}</flux:text>
-            <flux:heading size="lg" data-test="available-to-grade">{{ number_format(max(0, $this->availableToGrade)) }}</flux:heading>
+        <div class="flex items-end gap-3">
+            <div class="rounded-xl bg-amber-50 px-4 py-3 text-start sm:text-end dark:bg-amber-950/40">
+                <flux:text class="text-sm">{{ __('Ungraded eggs available') }}</flux:text>
+                <flux:heading size="lg" data-test="available-to-grade">{{ number_format(max(0, $this->availableToGrade)) }}</flux:heading>
+            </div>
+            <flux:modal.trigger name="grading-form">
+                <flux:button variant="primary" icon="plus">{{ __('Record grading') }}</flux:button>
+            </flux:modal.trigger>
         </div>
     </div>
 
     @if ($this->stockLevels !== [])
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             @foreach ($this->stockLevels as $stockLevel)
-                <flux:card wire:key="stock-{{ $stockLevel['id'] }}" class="space-y-1">
+                <flux:card wire:key="stock-{{ $stockLevel['id'] }}" class="metric-card space-y-1">
                     <div class="flex items-center justify-between gap-3">
                         <flux:text class="truncate font-medium">{{ $stockLevel['name'] }}</flux:text>
                         @unless ($stockLevel['is_active'])
@@ -248,8 +256,7 @@ new #[Title('Egg grading')] class extends Component {
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="grading-form" class="max-w-xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveGrading" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -285,24 +292,23 @@ new #[Title('Egg grading')] class extends Component {
                 <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" placeholder="Optional grading notes" />
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingGradingId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-grading">
+                    <flux:button class="action-button" variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-grading">
                         {{ $editingGradingId === null ? __('Add grading') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel">
             @if ($this->gradings->isEmpty())
-                <div class="py-10 text-center">
+                <div class="empty-state">
                     <flux:heading>{{ __('No grading records yet') }}</flux:heading>
                     <flux:subheading>{{ __('Record production first, then allocate the available eggs into grades.') }}</flux:subheading>
+                    <flux:modal.trigger name="grading-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Record grading') }}</flux:button>
+                    </flux:modal.trigger>
                 </div>
             @else
                 <flux:table :paginate="$this->gradings">
@@ -343,8 +349,7 @@ new #[Title('Egg grading')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-grading" class="max-w-lg">
         <div class="space-y-6">

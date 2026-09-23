@@ -4,6 +4,7 @@ use App\Models\EggGrading;
 use App\Models\Production;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -25,6 +26,7 @@ new #[Title('Daily production')] class extends Component {
     public int $totalEggs = 0;
     public int $damagedEggs = 0;
     public string $notes = '';
+    public string $search = '';
 
     public function mount(): void
     {
@@ -36,9 +38,16 @@ new #[Title('Daily production')] class extends Component {
     public function productions(): LengthAwarePaginator
     {
         return Production::query()
+            ->when(filled($this->search), fn (Builder $query): Builder => $query->where('notes', 'like', '%'.$this->search.'%'))
             ->orderByDesc('production_date')
             ->orderByDesc('id')
             ->paginate(15);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+        unset($this->productions);
     }
 
     #[Computed]
@@ -80,6 +89,7 @@ new #[Title('Daily production')] class extends Component {
         $this->resetProductionForm();
         $this->resetPage();
         unset($this->productions);
+        Flux::modal('production-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -96,11 +106,13 @@ new #[Title('Daily production')] class extends Component {
         $this->damagedEggs = $production->damaged_eggs;
         $this->notes = $production->notes ?? '';
         $this->resetValidation();
+        Flux::modal('production-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetProductionForm();
+        Flux::modal('production-form')->close();
     }
 
     public function confirmProductionDeletion(int $productionId): void
@@ -191,55 +203,31 @@ new #[Title('Daily production')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div>
-        <flux:heading size="xl" level="1">{{ __('Daily production') }}</flux:heading>
-        <flux:subheading>{{ __('Record collected and damaged eggs before grading.') }}</flux:subheading>
+<section class="page-shell">
+    <div class="page-header">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('Daily production') }}</flux:heading>
+            <flux:subheading>{{ __('Record collected and damaged eggs before grading.') }}</flux:subheading>
+        </div>
+
+        <flux:modal.trigger name="production-form">
+            <flux:button variant="primary" icon="plus">{{ __('Record production') }}</flux:button>
+        </flux:modal.trigger>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <flux:card>
-            <form wire:submit="saveProduction" class="space-y-5">
-                <div>
-                    <flux:heading size="lg">
-                        {{ $editingProductionId === null ? __('Add production') : __('Edit production') }}
-                    </flux:heading>
-                    <flux:subheading>{{ __('Only one production record is allowed per day.') }}</flux:subheading>
-                </div>
-
-                <flux:input wire:model="productionDate" :label="__('Production date')" type="date" required />
-
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                    <flux:input wire:model.live="totalEggs" :label="__('Total eggs collected')" type="number" min="0" required />
-                    <flux:input wire:model.live="damagedEggs" :label="__('Damaged eggs')" type="number" min="0" required />
-                </div>
-
-                <div class="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-800">
-                    <flux:text class="text-sm">{{ __('Expected for grading') }}</flux:text>
-                    <flux:heading size="lg">{{ number_format($this->expectedGradableEggs) }}</flux:heading>
-                </div>
-
-                <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" placeholder="Optional production notes" />
-
-                <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingProductionId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
-
-                    <flux:button variant="primary" type="submit" data-test="save-production">
-                        {{ $editingProductionId === null ? __('Add production') : __('Save changes') }}
-                    </flux:button>
-                </div>
-            </form>
-        </flux:card>
-
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel space-y-4">
+            <div class="flex justify-end">
+                <flux:input class="w-full sm:max-w-xs" wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search production notes" aria-label="Search production notes" clearable />
+            </div>
             @if ($this->productions->isEmpty())
-                <div class="py-10 text-center">
-                    <flux:heading>{{ __('No production records yet') }}</flux:heading>
-                    <flux:subheading>{{ __('Add the first daily collection using the form.') }}</flux:subheading>
+                <div class="empty-state">
+                    <flux:heading>{{ filled($search) ? __('No production records found') : __('No production records yet') }}</flux:heading>
+                    <flux:subheading>{{ filled($search) ? __('Try a different note keyword.') : __('Record the first daily collection to begin tracking output.') }}</flux:subheading>
+                    @unless (filled($search))
+                    <flux:modal.trigger name="production-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Record production') }}</flux:button>
+                    </flux:modal.trigger>
+                    @endunless
                 </div>
             @else
                 <flux:table :paginate="$this->productions">
@@ -286,8 +274,37 @@ new #[Title('Daily production')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
+
+    <flux:modal name="production-form" class="max-w-xl" @close="$wire.cancelEditing()">
+        <form wire:submit="saveProduction" class="space-y-5">
+            <div>
+                <flux:heading size="lg">{{ $editingProductionId === null ? __('Record production') : __('Edit production') }}</flux:heading>
+                <flux:subheading>{{ __('Only one production record is allowed per day.') }}</flux:subheading>
+            </div>
+
+            <flux:input wire:model="productionDate" :label="__('Production date')" type="date" required />
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <flux:input wire:model.live="totalEggs" :label="__('Total eggs collected')" type="number" min="0" required />
+                <flux:input wire:model.live="damagedEggs" :label="__('Damaged eggs')" type="number" min="0" required />
+            </div>
+
+            <div class="rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-950/40">
+                <flux:text class="text-sm">{{ __('Expected for grading') }}</flux:text>
+                <flux:heading size="lg">{{ number_format($this->expectedGradableEggs) }} {{ __('eggs') }}</flux:heading>
+            </div>
+
+            <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" placeholder="Optional production notes" />
+
+            <div class="flex justify-end gap-2">
+                <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
+                <flux:button class="action-button" variant="primary" type="submit" data-test="save-production">
+                    {{ $editingProductionId === null ? __('Record production') : __('Save changes') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     <flux:modal name="delete-production" class="max-w-lg">
         <div class="space-y-6">

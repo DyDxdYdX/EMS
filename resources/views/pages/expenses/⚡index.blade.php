@@ -28,6 +28,7 @@ new #[Title('Expenses')] class extends Component {
     public ?int $expenseCategoryId = null;
     public string $amount = '0.00';
     public string $description = '';
+    public string $search = '';
 
     public function mount(): void
     {
@@ -57,9 +58,21 @@ new #[Title('Expenses')] class extends Component {
     {
         return Expense::query()
             ->with('expenseCategory:id,name')
+            ->when(filled($this->search), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query->where('title', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('expenseCategory', fn (Builder $query): Builder => $query->where('name', 'like', '%'.$this->search.'%'));
+                });
+            })
             ->orderByDesc('expense_date')
             ->orderByDesc('id')
             ->paginate(15);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+        unset($this->expenses);
     }
 
     #[Computed]
@@ -102,6 +115,7 @@ new #[Title('Expenses')] class extends Component {
         $this->resetExpenseForm();
         $this->resetPage();
         $this->clearComputedData();
+        Flux::modal('expense-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -120,12 +134,14 @@ new #[Title('Expenses')] class extends Component {
         $this->description = $expense->description ?? '';
         $this->resetValidation();
         $this->clearComputedData();
+        Flux::modal('expense-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetExpenseForm();
         $this->clearComputedData();
+        Flux::modal('expense-form')->close();
     }
 
     public function confirmExpenseDeletion(int $expenseId): void
@@ -183,20 +199,24 @@ new #[Title('Expenses')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+<section class="page-shell">
+    <div class="page-header">
         <div>
             <flux:heading size="xl" level="1">{{ __('Expenses') }}</flux:heading>
             <flux:subheading>{{ __('Record farm costs for accurate profit and loss tracking.') }}</flux:subheading>
         </div>
-        <div class="sm:text-right">
-            <flux:text class="text-sm">{{ __('All-time expenses') }}</flux:text>
-            <flux:heading size="lg">{{ $this->totalExpenses }}</flux:heading>
+        <div class="flex items-end gap-4">
+            <div class="text-right">
+                <flux:text class="text-sm">{{ __('All-time expenses') }}</flux:text>
+                <flux:heading size="lg">{{ __('RM :amount', ['amount' => $this->totalExpenses]) }}</flux:heading>
+            </div>
+            <flux:modal.trigger name="expense-form">
+                <flux:button variant="primary" icon="plus">{{ __('Record expense') }}</flux:button>
+            </flux:modal.trigger>
         </div>
     </div>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="expense-form" class="max-w-xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveExpense" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -228,24 +248,28 @@ new #[Title('Expenses')] class extends Component {
                 <flux:textarea wire:model="description" :label="__('Description')" rows="3" placeholder="Optional expense details" />
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingExpenseId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" :disabled="$this->selectableCategories->isEmpty()" data-test="save-expense">
+                    <flux:button class="action-button" variant="primary" type="submit" :disabled="$this->selectableCategories->isEmpty()" data-test="save-expense">
                         {{ $editingExpenseId === null ? __('Add expense') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel space-y-4">
+            <div class="flex justify-end">
+                <flux:input class="w-full sm:max-w-xs" wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search expense or category" aria-label="Search expenses" clearable />
+            </div>
             @if ($this->expenses->isEmpty())
-                <div class="py-10 text-center">
-                    <flux:heading>{{ __('No expenses yet') }}</flux:heading>
-                    <flux:subheading>{{ __('Record the first farm expense using the form.') }}</flux:subheading>
+                <div class="empty-state">
+                    <flux:heading>{{ filled($search) ? __('No expenses found') : __('No expenses yet') }}</flux:heading>
+                    <flux:subheading>{{ filled($search) ? __('Try a different expense or category.') : __('Record the first farm cost to start tracking profitability.') }}</flux:subheading>
+                    @unless (filled($search))
+                    <flux:modal.trigger name="expense-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Record expense') }}</flux:button>
+                    </flux:modal.trigger>
+                    @endunless
                 </div>
             @else
                 <flux:table :paginate="$this->expenses">
@@ -272,7 +296,7 @@ new #[Title('Expenses')] class extends Component {
                                     </div>
                                 </flux:table.cell>
                                 <flux:table.cell>{{ $expense->expenseCategory->name }}</flux:table.cell>
-                                <flux:table.cell align="end">{{ number_format((float) $expense->amount, 2) }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ __('RM :amount', ['amount' => number_format((float) $expense->amount, 2)]) }}</flux:table.cell>
                                 <flux:table.cell align="end">
                                     <div class="flex justify-end gap-2">
                                         <flux:button size="sm" variant="ghost" wire:click="editExpense({{ $expense->id }})">
@@ -288,8 +312,7 @@ new #[Title('Expenses')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-expense" class="max-w-lg">
         <div class="space-y-6">

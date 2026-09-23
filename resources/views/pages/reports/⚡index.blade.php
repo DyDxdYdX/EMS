@@ -153,8 +153,8 @@ new #[Title('Reports')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+<section class="page-shell">
+    <div class="page-header">
         <div>
             <flux:heading size="xl" level="1">{{ __('Reports') }}</flux:heading>
             <flux:subheading>{{ __('Review farm performance and export records for the selected period.') }}</flux:subheading>
@@ -163,12 +163,12 @@ new #[Title('Reports')] class extends Component {
         <form wire:submit="applyPeriod" class="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,10rem)_auto_auto] sm:items-end">
             <flux:input wire:model="startDate" :label="__('From')" type="date" required />
             <flux:input wire:model="endDate" :label="__('To')" type="date" required />
-            <flux:button type="submit" variant="primary">{{ __('Apply') }}</flux:button>
-            <flux:button type="button" variant="ghost" wire:click="resetPeriod">{{ __('This month') }}</flux:button>
+            <flux:button class="action-button" type="submit" variant="primary">{{ __('Apply') }}</flux:button>
+            <flux:button class="action-button" type="button" variant="ghost" wire:click="resetPeriod">{{ __('This month') }}</flux:button>
         </form>
     </div>
 
-    <flux:card class="space-y-4">
+    <flux:card class="data-panel space-y-4">
         <div>
             <flux:heading size="lg">{{ __('Exports') }}</flux:heading>
             <flux:subheading>{{ __('Downloads include records from :start through :end.', ['start' => $this->appliedStartDate, 'end' => $this->appliedEndDate]) }}</flux:subheading>
@@ -187,23 +187,23 @@ new #[Title('Reports')] class extends Component {
         <flux:heading size="lg" class="mb-4">{{ __('Profit and loss') }}</flux:heading>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <flux:card class="space-y-2">
+            <flux:card class="metric-card space-y-2">
                 <div class="flex items-center justify-between gap-3">
                     <flux:text>{{ __('Sales revenue') }}</flux:text>
                     <flux:badge color="green" size="sm">{{ trans_choice(':count sale|:count sales', $this->summary['sale_count'], ['count' => number_format($this->summary['sale_count'])]) }}</flux:badge>
                 </div>
-                <flux:heading size="xl">{{ $this->summary['revenue'] }}</flux:heading>
+                <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['revenue']]) }}</flux:heading>
             </flux:card>
 
-            <flux:card class="space-y-2">
+            <flux:card class="metric-card space-y-2">
                 <div class="flex items-center justify-between gap-3">
                     <flux:text>{{ __('Operating expenses') }}</flux:text>
                     <flux:badge size="sm">{{ trans_choice(':count entry|:count entries', $this->summary['expense_count'], ['count' => number_format($this->summary['expense_count'])]) }}</flux:badge>
                 </div>
-                <flux:heading size="xl">{{ $this->summary['expenses'] }}</flux:heading>
+                <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['expenses']]) }}</flux:heading>
             </flux:card>
 
-            <flux:card class="space-y-2">
+            <flux:card class="metric-card space-y-2">
                 <div class="flex items-center justify-between gap-3">
                     <flux:text>{{ __('Net profit') }}</flux:text>
                     <flux:badge :color="$this->summary['net_profit_cents'] >= 0 ? 'green' : 'red'" size="sm">
@@ -211,11 +211,11 @@ new #[Title('Reports')] class extends Component {
                     </flux:badge>
                 </div>
                 <flux:heading size="xl" :class="$this->summary['net_profit_cents'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
-                    {{ $this->summary['net_profit'] }}
+                    {{ __('RM :amount', ['amount' => $this->summary['net_profit']]) }}
                 </flux:heading>
             </flux:card>
 
-            <flux:card class="space-y-2">
+            <flux:card class="metric-card space-y-2">
                 <flux:text>{{ __('Eggs sold') }}</flux:text>
                 <flux:heading size="xl">{{ number_format($this->summary['eggs_sold']) }}</flux:heading>
                 <flux:text class="text-xs">{{ __('Normalized to individual eggs') }}</flux:text>
@@ -224,14 +224,14 @@ new #[Title('Reports')] class extends Component {
     </div>
 
     <div class="grid gap-6 xl:grid-cols-2">
-        <flux:card class="min-w-0 space-y-5">
+        <flux:card class="data-panel space-y-5">
             <div>
                 <flux:heading size="lg">{{ __('Sales by egg grade') }}</flux:heading>
                 <flux:subheading>{{ __('Revenue and eggs sold in the selected period.') }}</flux:subheading>
             </div>
 
             @if ($this->salesByGrade->isEmpty())
-                <div class="rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center dark:border-zinc-700">
+                <div class="empty-state">
                     <flux:heading>{{ __('No sales in this period') }}</flux:heading>
                     <flux:subheading>{{ __('Change the dates or record a sale to see revenue.') }}</flux:subheading>
                 </div>
@@ -248,7 +248,7 @@ new #[Title('Reports')] class extends Component {
                             <flux:table.row :key="$grade['name']">
                                 <flux:table.cell variant="strong">{{ $grade['name'] }}</flux:table.cell>
                                 <flux:table.cell align="end">{{ number_format($grade['eggs_sold']) }}</flux:table.cell>
-                                <flux:table.cell align="end">{{ $grade['revenue'] }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ __('RM :amount', ['amount' => $grade['revenue']]) }}</flux:table.cell>
                             </flux:table.row>
                         @endforeach
                     </flux:table.rows>
@@ -256,14 +256,14 @@ new #[Title('Reports')] class extends Component {
             @endif
         </flux:card>
 
-        <flux:card class="min-w-0 space-y-5">
+        <flux:card class="data-panel space-y-5">
             <div>
                 <flux:heading size="lg">{{ __('Expenses by category') }}</flux:heading>
                 <flux:subheading>{{ __('Operating costs in the selected period.') }}</flux:subheading>
             </div>
 
             @if ($this->expensesByCategory->isEmpty())
-                <div class="rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center dark:border-zinc-700">
+                <div class="empty-state">
                     <flux:heading>{{ __('No expenses in this period') }}</flux:heading>
                     <flux:subheading>{{ __('Change the dates or record an expense to see costs.') }}</flux:subheading>
                 </div>
@@ -280,7 +280,7 @@ new #[Title('Reports')] class extends Component {
                             <flux:table.row :key="$category['name']">
                                 <flux:table.cell variant="strong">{{ $category['name'] }}</flux:table.cell>
                                 <flux:table.cell align="end">{{ number_format($category['expense_count']) }}</flux:table.cell>
-                                <flux:table.cell align="end">{{ $category['expenses'] }}</flux:table.cell>
+                                <flux:table.cell align="end">{{ __('RM :amount', ['amount' => $category['expenses']]) }}</flux:table.cell>
                             </flux:table.row>
                         @endforeach
                     </flux:table.rows>
@@ -290,7 +290,7 @@ new #[Title('Reports')] class extends Component {
     </div>
 
     <div class="grid gap-6 xl:grid-cols-2">
-        <flux:card class="min-w-0 space-y-5">
+        <flux:card class="data-panel space-y-5">
             <div>
                 <flux:heading size="lg">{{ __('Production totals') }}</flux:heading>
                 <flux:subheading>{{ __('Eggs collected and damaged in the selected period.') }}</flux:subheading>
@@ -316,14 +316,14 @@ new #[Title('Reports')] class extends Component {
             </div>
         </flux:card>
 
-        <flux:card class="min-w-0 space-y-5">
+        <flux:card class="data-panel space-y-5">
             <div>
                 <flux:heading size="lg">{{ __('Current stock by egg grade') }}</flux:heading>
                 <flux:subheading>{{ __('On-hand eggs right now, including activity outside the selected period.') }}</flux:subheading>
             </div>
 
             @if ($this->currentStock->isEmpty())
-                <div class="rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center dark:border-zinc-700">
+                <div class="empty-state">
                     <flux:heading>{{ __('No egg grades yet') }}</flux:heading>
                     <flux:subheading>{{ __('Add an egg grade to track stock.') }}</flux:subheading>
                 </div>

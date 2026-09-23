@@ -141,6 +141,7 @@ new #[Title('Stock adjustments')] class extends Component {
         $this->resetAdjustmentForm();
         $this->resetPage();
         $this->clearComputedData();
+        Flux::modal('adjustment-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -159,12 +160,14 @@ new #[Title('Stock adjustments')] class extends Component {
         $this->reason = $adjustment->reason;
         $this->resetValidation();
         $this->clearComputedData();
+        Flux::modal('adjustment-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetAdjustmentForm();
         $this->clearComputedData();
+        Flux::modal('adjustment-form')->close();
     }
 
     public function confirmAdjustmentDeletion(int $adjustmentId): void
@@ -224,16 +227,21 @@ new #[Title('Stock adjustments')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div>
-        <flux:heading size="xl" level="1">{{ __('Stock adjustments') }}</flux:heading>
-        <flux:subheading>{{ __('Record breakage, spoilage, counting corrections, and manual stock additions.') }}</flux:subheading>
+<section class="page-shell">
+    <div class="page-header">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('Stock adjustments') }}</flux:heading>
+            <flux:subheading>{{ __('Record breakage, spoilage, counting corrections, and manual stock additions.') }}</flux:subheading>
+        </div>
+        <flux:modal.trigger name="adjustment-form">
+            <flux:button variant="primary" icon="plus">{{ __('Add adjustment') }}</flux:button>
+        </flux:modal.trigger>
     </div>
 
     @if ($this->stockLevels !== [])
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             @foreach ($this->stockLevels as $stockLevel)
-                <flux:card wire:key="adjustment-stock-{{ $stockLevel['id'] }}" class="space-y-1">
+                <flux:card wire:key="adjustment-stock-{{ $stockLevel['id'] }}" class="metric-card space-y-1">
                     <div class="flex items-center justify-between gap-3">
                         <flux:text class="truncate font-medium">{{ $stockLevel['name'] }}</flux:text>
                         @unless ($stockLevel['is_active'])
@@ -247,8 +255,7 @@ new #[Title('Stock adjustments')] class extends Component {
         </div>
     @endif
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="adjustment-form" class="max-w-xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveAdjustment" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -289,24 +296,23 @@ new #[Title('Stock adjustments')] class extends Component {
                 @endif
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingAdjustmentId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-stock-adjustment">
+                    <flux:button class="action-button" variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-stock-adjustment">
                         {{ $editingAdjustmentId === null ? __('Add adjustment') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel">
             @if ($this->adjustments->isEmpty())
-                <div class="py-10 text-center">
+                <div class="empty-state">
                     <flux:heading>{{ __('No stock adjustments yet') }}</flux:heading>
                     <flux:subheading>{{ __('Use adjustments only when physical stock differs from recorded stock.') }}</flux:subheading>
+                    <flux:modal.trigger name="adjustment-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Add adjustment') }}</flux:button>
+                    </flux:modal.trigger>
                 </div>
             @else
                 <flux:table :paginate="$this->adjustments">
@@ -344,8 +350,7 @@ new #[Title('Stock adjustments')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-stock-adjustment" class="max-w-lg">
         <div class="space-y-6">

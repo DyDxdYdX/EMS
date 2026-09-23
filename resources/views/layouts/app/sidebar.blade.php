@@ -1,23 +1,26 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+    <body class="min-h-screen bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
+                <flux:sidebar.group :heading="__('Overview')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                         {{ __('Reports') }}
                     </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Operations')" class="grid">
                     <flux:sidebar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
                         {{ __('Production') }}
                     </flux:sidebar.item>
@@ -27,6 +30,9 @@
                     <flux:sidebar.item icon="arrows-right-left" :href="route('stock-adjustments.index')" :current="request()->routeIs('stock-adjustments.*')" wire:navigate>
                         {{ __('Stock adjustments') }}
                     </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Sales & costs')" class="grid">
                     <flux:sidebar.item icon="shopping-cart" :href="route('sales.index')" :current="request()->routeIs('sales.*')" wire:navigate>
                         {{ __('Sales') }}
                     </flux:sidebar.item>
@@ -36,26 +42,22 @@
                     <flux:sidebar.item icon="users" :href="route('customers.index')" :current="request()->routeIs('customers.*')" wire:navigate>
                         {{ __('Customers') }}
                     </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Configuration')" expandable :expanded="request()->routeIs('egg-grades.*', 'expense-categories.*', 'farm-settings.*')" class="grid">
                     <flux:sidebar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                         {{ __('Egg grades') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="tag" :href="route('expense-categories.index')" :current="request()->routeIs('expense-categories.*')" wire:navigate>
                         {{ __('Expense categories') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="cog-6-tooth" :href="route('farm-settings.edit')" :current="request()->routeIs('farm-settings.*')" wire:navigate>
+                        {{ __('Farm settings') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>

@@ -33,6 +33,7 @@ new #[Title('Sales')] class extends Component {
     public int $quantity = 1;
     public string $unitPrice = '0.00';
     public string $notes = '';
+    public string $search = '';
 
     public function mount(): void
     {
@@ -70,9 +71,21 @@ new #[Title('Sales')] class extends Component {
     {
         return Sale::query()
             ->with(['customer:id,name', 'eggGrade:id,name'])
+            ->when(filled($this->search), function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query->whereHas('customer', fn (Builder $query): Builder => $query->where('name', 'like', '%'.$this->search.'%'))
+                        ->orWhereHas('eggGrade', fn (Builder $query): Builder => $query->where('name', 'like', '%'.$this->search.'%'));
+                });
+            })
             ->orderByDesc('sale_date')
             ->orderByDesc('id')
             ->paginate(15);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+        unset($this->sales);
     }
 
     #[Computed]
@@ -146,6 +159,7 @@ new #[Title('Sales')] class extends Component {
         $this->resetSaleForm();
         $this->resetPage();
         $this->clearComputedData();
+        Flux::modal('sale-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
     }
@@ -166,12 +180,14 @@ new #[Title('Sales')] class extends Component {
         $this->notes = $sale->notes ?? '';
         $this->resetValidation();
         $this->clearComputedData();
+        Flux::modal('sale-form')->show();
     }
 
     public function cancelEditing(): void
     {
         $this->resetSaleForm();
         $this->clearComputedData();
+        Flux::modal('sale-form')->close();
     }
 
     public function confirmSaleDeletion(int $saleId): void
@@ -244,14 +260,18 @@ new #[Title('Sales')] class extends Component {
 };
 ?>
 
-<section class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <div>
-        <flux:heading size="xl" level="1">{{ __('Sales') }}</flux:heading>
-        <flux:subheading>{{ __('Record egg and tray sales while keeping stock accurate.') }}</flux:subheading>
+<section class="page-shell">
+    <div class="page-header">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('Sales') }}</flux:heading>
+            <flux:subheading>{{ __('Record egg and tray sales while keeping stock accurate.') }}</flux:subheading>
+        </div>
+        <flux:modal.trigger name="sale-form">
+            <flux:button variant="primary" icon="plus">{{ __('Record sale') }}</flux:button>
+        </flux:modal.trigger>
     </div>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-        <flux:card>
+    <flux:modal name="sale-form" class="max-w-2xl" @close="$wire.cancelEditing()">
             <form wire:submit="saveSale" class="space-y-5">
                 <div>
                     <flux:heading size="lg">
@@ -285,7 +305,7 @@ new #[Title('Sales')] class extends Component {
                     @endforeach
                 </flux:select>
 
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <flux:select wire:model.live="unit" :label="__('Unit')" required>
                         <flux:select.option value="tray">{{ __('Tray') }}</flux:select.option>
                         <flux:select.option value="egg">{{ __('Egg') }}</flux:select.option>
@@ -313,29 +333,33 @@ new #[Title('Sales')] class extends Component {
                     </div>
                     <div>
                         <flux:text class="text-xs">{{ __('Total') }}</flux:text>
-                        <flux:heading size="sm">{{ $this->totalPreview }}</flux:heading>
+                        <flux:heading size="sm">{{ __('RM :amount', ['amount' => $this->totalPreview]) }}</flux:heading>
                     </div>
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-2">
-                    @if ($editingSaleId !== null)
-                        <flux:button type="button" variant="ghost" wire:click="cancelEditing">
-                            {{ __('Cancel') }}
-                        </flux:button>
-                    @endif
+                    <flux:button type="button" variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
 
-                    <flux:button variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-sale">
+                    <flux:button class="action-button" variant="primary" type="submit" :disabled="$this->selectableGrades->isEmpty()" data-test="save-sale">
                         {{ $editingSaleId === null ? __('Add sale') : __('Save changes') }}
                     </flux:button>
                 </div>
             </form>
-        </flux:card>
+    </flux:modal>
 
-        <flux:card class="min-w-0">
+    <flux:card class="data-panel space-y-4">
+            <div class="flex justify-end">
+                <flux:input class="w-full sm:max-w-xs" wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search customer or grade" aria-label="Search sales" clearable />
+            </div>
             @if ($this->sales->isEmpty())
-                <div class="py-10 text-center">
-                    <flux:heading>{{ __('No sales yet') }}</flux:heading>
-                    <flux:subheading>{{ __('Grade eggs into stock before recording the first sale.') }}</flux:subheading>
+                <div class="empty-state">
+                    <flux:heading>{{ filled($search) ? __('No sales found') : __('No sales yet') }}</flux:heading>
+                    <flux:subheading>{{ filled($search) ? __('Try a different customer or egg grade.') : __('Grade eggs into stock before recording the first sale.') }}</flux:subheading>
+                    @unless (filled($search))
+                    <flux:modal.trigger name="sale-form">
+                        <flux:button class="mt-4" size="sm">{{ __('Record sale') }}</flux:button>
+                    </flux:modal.trigger>
+                    @endunless
                 </div>
             @else
                 <flux:table :paginate="$this->sales">
@@ -375,9 +399,9 @@ new #[Title('Sales')] class extends Component {
                                 </flux:table.cell>
                                 <flux:table.cell align="end">
                                     <div class="flex flex-col items-end">
-                                        <span>{{ number_format((float) $sale->total_amount, 2) }}</span>
+                                        <span>{{ __('RM :amount', ['amount' => number_format((float) $sale->total_amount, 2)]) }}</span>
                                         <span class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ number_format((float) $sale->unit_price, 2) }} / {{ $sale->unit }}
+                                            {{ __('RM :amount', ['amount' => number_format((float) $sale->unit_price, 2)]) }} / {{ $sale->unit }}
                                         </span>
                                     </div>
                                 </flux:table.cell>
@@ -396,8 +420,7 @@ new #[Title('Sales')] class extends Component {
                     </flux:table.rows>
                 </flux:table>
             @endif
-        </flux:card>
-    </div>
+    </flux:card>
 
     <flux:modal name="delete-sale" class="max-w-lg">
         <div class="space-y-6">

@@ -99,6 +99,44 @@ test('sales form defaults unit to tray and preselects first egg grade', function
         ->assertSet('eggGradeId', $gradeAa->id);
 });
 
+test('customer picker shows a bounded list and searches names and phone numbers', function () {
+    Customer::factory()->count(25)->sequence(fn ($sequence): array => [
+        'name' => sprintf('Customer %02d', $sequence->index + 1),
+        'phone' => sprintf('555-%04d', $sequence->index + 1),
+    ])->create();
+
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->assertSee('Customer 20')
+        ->assertDontSee('Customer 21')
+        ->set('customerSearch', 'Customer 25')
+        ->assertSee('Customer 25')
+        ->assertDontSee('Customer 01')
+        ->set('customerSearch', '555-0024')
+        ->assertSee('Customer 24')
+        ->assertDontSee('Customer 25')
+        ->set('customerSearch', 'no matching customer')
+        ->assertSee('No matching customers')
+        ->assertSee('Walk-in customer');
+});
+
+test('customer picker keeps the selected customer available outside search results', function () {
+    Customer::factory()->count(20)->sequence(fn ($sequence): array => [
+        'name' => sprintf('Customer %02d', $sequence->index + 1),
+    ])->create();
+    $selectedCustomer = Customer::factory()->create(['name' => 'Customer 25']);
+
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->set('customerId', $selectedCustomer->id)
+        ->set('customerSearch', 'no match')
+        ->assertSee('Customer 25')
+        ->assertSet('customerId', $selectedCustomer->id)
+        ->call('cancelEditing')
+        ->assertSet('customerSearch', '')
+        ->assertSet('customerId', null);
+});
+
 test('sales cannot exceed available grade stock', function () {
     $user = User::factory()->create();
     $grade = EggGrade::factory()->create();

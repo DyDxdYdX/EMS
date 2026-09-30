@@ -34,6 +34,7 @@ new #[Title('Sales')] class extends Component {
     public string $unitPrice = '0.00';
     public string $notes = '';
     public string $search = '';
+    public string $customerSearch = '';
 
     public function mount(): void
     {
@@ -45,7 +46,34 @@ new #[Title('Sales')] class extends Component {
     #[Computed]
     public function customers(): Collection
     {
-        return Customer::query()->orderBy('name')->orderBy('id')->get();
+        $search = trim($this->customerSearch);
+
+        $customers = Customer::query()
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $query) use ($search): void {
+                    $query->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%');
+                });
+            })
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(20)
+            ->get(['id', 'name', 'phone']);
+
+        if ($this->customerId !== null && ! $customers->contains('id', $this->customerId)) {
+            $selectedCustomer = Customer::query()->find($this->customerId, ['id', 'name', 'phone']);
+
+            if ($selectedCustomer !== null) {
+                $customers->prepend($selectedCustomer);
+            }
+        }
+
+        return $customers;
+    }
+
+    public function updatedCustomerSearch(): void
+    {
+        unset($this->customers);
     }
 
     /** @return Collection<int, EggGrade> */
@@ -173,6 +201,7 @@ new #[Title('Sales')] class extends Component {
         $this->editingSaleId = $sale->id;
         $this->saleDate = $sale->sale_date->toDateString();
         $this->customerId = $sale->customer_id;
+        $this->customerSearch = '';
         $this->eggGradeId = $sale->egg_grade_id;
         $this->unit = $sale->unit;
         $this->quantity = $sale->quantity;
@@ -231,6 +260,7 @@ new #[Title('Sales')] class extends Component {
     {
         $this->reset('editingSaleId', 'notes');
         $this->customerId = null;
+        $this->customerSearch = '';
         $this->saleDate = now()->toDateString();
         $this->unit = 'tray';
         $this->quantity = 1;
@@ -288,14 +318,20 @@ new #[Title('Sales')] class extends Component {
 
                 <flux:input wire:model="saleDate" :label="__('Sale date')" type="date" required />
 
-                <flux:select wire:model="customerId" :label="__('Customer')">
-                    <flux:select.option value="">{{ __('Walk-in customer') }}</flux:select.option>
-                    @foreach ($this->customers as $customer)
-                        <flux:select.option :value="$customer->id" wire:key="customer-option-{{ $customer->id }}">
-                            {{ $customer->name }}
-                        </flux:select.option>
-                    @endforeach
-                </flux:select>
+                <div class="space-y-3">
+                    <flux:input wire:model.live.debounce.300ms="customerSearch" :label="__('Find customer')" icon="magnifying-glass" :placeholder="__('Search by name or phone')" maxlength="100" clearable />
+                    <flux:select wire:model="customerId" :label="__('Customer')" :description="__('Showing up to 20 matches. Search to find more customers.')">
+                        <flux:select.option value="">{{ __('Walk-in customer') }}</flux:select.option>
+                        @foreach ($this->customers as $customer)
+                            <flux:select.option :value="$customer->id" wire:key="customer-option-{{ $customer->id }}">
+                                {{ $customer->name }}{{ $customer->phone ? ' · '.$customer->phone : '' }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    @if ($this->customers->isEmpty() && filled($customerSearch))
+                        <flux:text class="text-sm">{{ __('No matching customers. You can still record a walk-in sale.') }}</flux:text>
+                    @endif
+                </div>
 
                 <flux:select wire:model.live="eggGradeId" :label="__('Egg grade')" required>
                     @foreach ($this->selectableGrades as $grade)

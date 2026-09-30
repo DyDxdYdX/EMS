@@ -21,7 +21,7 @@ test('authenticated users can view current stock by grade', function () {
     StockAdjustment::factory()->for($grade)->remove()->create(['quantity' => 7]);
 
     $this->actingAs($user)
-        ->get(route('gradings.index'))
+        ->get(route('egg-operations.index', ['tab' => 'grading']))
         ->assertOk()
         ->assertSee('Grade A')
         ->assertSee('78');
@@ -183,7 +183,7 @@ test('grading notes are escaped when rendered', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('gradings.index'))
+        ->get(route('egg-operations.index', ['tab' => 'grading']))
         ->assertOk()
         ->assertSee('&lt;script&gt;', escape: false)
         ->assertDontSee('<script>alert("grading")</script>', escape: false);

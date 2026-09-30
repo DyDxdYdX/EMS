@@ -21,14 +21,8 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Operations')" class="grid">
-                    <flux:sidebar.item icon="clipboard-document-list" :href="route('productions.index')" :current="request()->routeIs('productions.*')" wire:navigate>
-                        {{ __('Production') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="adjustments-horizontal" :href="route('gradings.index')" :current="request()->routeIs('gradings.*')" wire:navigate>
-                        {{ __('Egg grading') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="arrows-right-left" :href="route('stock-adjustments.index')" :current="request()->routeIs('stock-adjustments.*')" wire:navigate>
-                        {{ __('Stock adjustments') }}
+                    <flux:sidebar.item icon="clipboard-document-list" :href="route('egg-operations.index')" :current="request()->routeIs('egg-operations.*')" wire:navigate>
+                        {{ __('Egg operations') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 

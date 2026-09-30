@@ -16,9 +16,10 @@ Route::middleware('auth')->group(function () {
     Route::livewire('reports', 'pages::reports.index')->name('reports.index');
     Route::get('reports/exports/{export}', ReportExportController::class)->name('reports.exports');
     Route::get('reports/pdf', ReportPdfController::class)->name('reports.pdf');
-    Route::livewire('productions', 'pages::productions.index')->name('productions.index');
-    Route::livewire('gradings', 'pages::gradings.index')->name('gradings.index');
-    Route::livewire('stock-adjustments', 'pages::stock-adjustments.index')->name('stock-adjustments.index');
+    Route::livewire('egg-operations', 'pages::egg-operations.index')->name('egg-operations.index');
+    Route::get('productions', fn (): RedirectResponse => to_route('egg-operations.index', ['tab' => 'production']))->name('productions.index');
+    Route::get('gradings', fn (): RedirectResponse => to_route('egg-operations.index', ['tab' => 'grading']))->name('gradings.index');
+    Route::get('stock-adjustments', fn (): RedirectResponse => to_route('egg-operations.index', ['tab' => 'adjustments']))->name('stock-adjustments.index');
     Route::livewire('sales', 'pages::sales.index')->name('sales.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('customers', 'pages::customers.index')->name('customers.index');

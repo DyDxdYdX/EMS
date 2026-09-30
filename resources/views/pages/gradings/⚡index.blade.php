@@ -19,6 +19,8 @@ use Livewire\WithPagination;
 new #[Title('Egg grading')] class extends Component {
     use WithPagination;
 
+    public bool $embedded = false;
+
     #[Locked]
     public ?int $editingGradingId = null;
 
@@ -30,8 +32,9 @@ new #[Title('Egg grading')] class extends Component {
     public int $quantity = 0;
     public string $notes = '';
 
-    public function mount(): void
+    public function mount(bool $embedded = false): void
     {
+        $this->embedded = $embedded;
         $this->gradingDate = now()->toDateString();
         $this->eggGradeId = $this->selectableGrades->first()?->id;
     }
@@ -125,6 +128,7 @@ new #[Title('Egg grading')] class extends Component {
         Flux::modal('grading-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
+        $this->dispatch('egg-operations-changed');
     }
 
     public function editGrading(int $gradingId): void
@@ -172,6 +176,7 @@ new #[Title('Egg grading')] class extends Component {
         $this->clearComputedData();
         Flux::modal('delete-grading')->close();
         Flux::toast(variant: 'success', text: __('Grading record deleted.'));
+        $this->dispatch('egg-operations-changed');
     }
 
     /** @return array<string, mixed> */
@@ -221,18 +226,20 @@ new #[Title('Egg grading')] class extends Component {
 };
 ?>
 
-<section class="page-shell">
+<section class="{{ $embedded ? 'space-y-6' : 'page-shell' }}">
     <div class="page-header">
         <div>
-            <flux:heading size="xl" level="1">{{ __('Egg grading') }}</flux:heading>
+            <flux:heading size="xl" :level="$embedded ? '2' : '1'">{{ __('Egg grading') }}</flux:heading>
             <flux:subheading>{{ __('Turn collected eggs into grade-level sellable stock.') }}</flux:subheading>
         </div>
 
         <div class="flex items-end gap-3">
-            <div class="rounded-xl bg-amber-50 px-4 py-3 text-start sm:text-end dark:bg-amber-950/40">
-                <flux:text class="text-sm">{{ __('Ungraded eggs available') }}</flux:text>
-                <flux:heading size="lg" data-test="available-to-grade">{{ number_format(max(0, $this->availableToGrade)) }}</flux:heading>
-            </div>
+            @unless ($embedded)
+                <div class="rounded-xl bg-amber-50 px-4 py-3 text-start sm:text-end dark:bg-amber-950/40">
+                    <flux:text class="text-sm">{{ __('Ungraded eggs available') }}</flux:text>
+                    <flux:heading size="lg" data-test="available-to-grade">{{ number_format(max(0, $this->availableToGrade)) }}</flux:heading>
+                </div>
+            @endunless
             <flux:modal.trigger name="grading-form">
                 <flux:button variant="primary" icon="plus">{{ __('Record grading') }}</flux:button>
             </flux:modal.trigger>

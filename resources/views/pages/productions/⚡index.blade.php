@@ -16,6 +16,8 @@ use Livewire\WithPagination;
 new #[Title('Daily production')] class extends Component {
     use WithPagination;
 
+    public bool $embedded = false;
+
     #[Locked]
     public ?int $editingProductionId = null;
 
@@ -28,8 +30,9 @@ new #[Title('Daily production')] class extends Component {
     public string $notes = '';
     public string $search = '';
 
-    public function mount(): void
+    public function mount(bool $embedded = false): void
     {
+        $this->embedded = $embedded;
         $this->productionDate = now()->toDateString();
     }
 
@@ -78,7 +81,9 @@ new #[Title('Daily production')] class extends Component {
             'totalEggs',
         );
 
-        if ($production === null) {
+        $wasCreated = $production === null;
+
+        if ($wasCreated) {
             Production::query()->create($attributes);
             $message = __('Production record created.');
         } else {
@@ -92,6 +97,7 @@ new #[Title('Daily production')] class extends Component {
         Flux::modal('production-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
+        $this->dispatch('egg-operations-changed', showGradingPrompt: $wasCreated && EggGrading::availableEggQuantity() > 0);
     }
 
     public function editProduction(int $productionId): void
@@ -140,6 +146,7 @@ new #[Title('Daily production')] class extends Component {
         unset($this->productions);
         Flux::modal('delete-production')->close();
         Flux::toast(variant: 'success', text: __('Production record deleted.'));
+        $this->dispatch('egg-operations-changed');
     }
 
     /** @return array<string, mixed> */
@@ -203,10 +210,10 @@ new #[Title('Daily production')] class extends Component {
 };
 ?>
 
-<section class="page-shell">
+<section class="{{ $embedded ? 'space-y-6' : 'page-shell' }}">
     <div class="page-header">
         <div>
-            <flux:heading size="xl" level="1">{{ __('Daily production') }}</flux:heading>
+            <flux:heading size="xl" :level="$embedded ? '2' : '1'">{{ __('Daily production') }}</flux:heading>
             <flux:subheading>{{ __('Record collected and damaged eggs before grading.') }}</flux:subheading>
         </div>
 

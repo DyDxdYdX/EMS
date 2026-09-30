@@ -19,6 +19,8 @@ use Livewire\WithPagination;
 new #[Title('Stock adjustments')] class extends Component {
     use WithPagination;
 
+    public bool $embedded = false;
+
     #[Locked]
     public ?int $editingAdjustmentId = null;
 
@@ -31,8 +33,9 @@ new #[Title('Stock adjustments')] class extends Component {
     public int $quantity = 1;
     public string $reason = '';
 
-    public function mount(): void
+    public function mount(bool $embedded = false): void
     {
+        $this->embedded = $embedded;
         $this->adjustmentDate = now()->toDateString();
     }
 
@@ -144,6 +147,7 @@ new #[Title('Stock adjustments')] class extends Component {
         Flux::modal('adjustment-form')->close();
 
         Flux::toast(variant: 'success', text: $message);
+        $this->dispatch('egg-operations-changed');
     }
 
     public function editAdjustment(int $adjustmentId): void
@@ -192,6 +196,7 @@ new #[Title('Stock adjustments')] class extends Component {
         $this->clearComputedData();
         Flux::modal('delete-stock-adjustment')->close();
         Flux::toast(variant: 'success', text: __('Stock adjustment deleted.'));
+        $this->dispatch('egg-operations-changed');
     }
 
     /** @return array<string, mixed> */
@@ -227,10 +232,10 @@ new #[Title('Stock adjustments')] class extends Component {
 };
 ?>
 
-<section class="page-shell">
+<section class="{{ $embedded ? 'space-y-6' : 'page-shell' }}">
     <div class="page-header">
         <div>
-            <flux:heading size="xl" level="1">{{ __('Stock adjustments') }}</flux:heading>
+            <flux:heading size="xl" :level="$embedded ? '2' : '1'">{{ __('Stock adjustments') }}</flux:heading>
             <flux:subheading>{{ __('Record breakage, spoilage, counting corrections, and manual stock additions.') }}</flux:subheading>
         </div>
         <flux:modal.trigger name="adjustment-form">

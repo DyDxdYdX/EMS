@@ -496,8 +496,8 @@ new #[Title('Dashboard')] class extends Component {
             <flux:subheading>{{ __('Production, grading, and stock that may need your attention.') }}</flux:subheading>
         </div>
         <div class="flex flex-wrap gap-2">
-            <flux:button icon="clipboard-document-list" :href="route('productions.index')" wire:navigate>{{ __('Record production') }}</flux:button>
-            <flux:button icon="adjustments-horizontal" :href="route('gradings.index')" wire:navigate>{{ __('Grade eggs') }}</flux:button>
+            <flux:button icon="clipboard-document-list" :href="route('egg-operations.index', ['tab' => 'production'])" wire:navigate>{{ __('Record production') }}</flux:button>
+            <flux:button icon="adjustments-horizontal" :href="route('egg-operations.index', ['tab' => 'grading'])" wire:navigate>{{ __('Grade eggs') }}</flux:button>
             <flux:button icon="shopping-cart" variant="primary" :href="route('sales.index')" wire:navigate>{{ __('Record sale') }}</flux:button>
         </div>
     </div>
@@ -527,7 +527,7 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:heading size="lg">{{ __('Stock by egg grade') }}</flux:heading>
                     <flux:subheading>{{ __('Live on-hand inventory after grading, sales, and adjustments.') }}</flux:subheading>
                 </div>
-                <flux:button size="sm" variant="ghost" :href="route('stock-adjustments.index')" wire:navigate>{{ __('Manage stock') }}</flux:button>
+                <flux:button size="sm" variant="ghost" :href="route('egg-operations.index', ['tab' => 'adjustments'])" wire:navigate>{{ __('Manage stock') }}</flux:button>
             </div>
             @if ($this->stockLevels->isEmpty())
                 <div class="empty-state">

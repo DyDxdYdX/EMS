@@ -242,7 +242,7 @@ test('adjustment reasons are escaped when rendered', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('stock-adjustments.index'))
+        ->get(route('egg-operations.index', ['tab' => 'adjustments']))
         ->assertOk()
         ->assertSee('&lt;script&gt;', escape: false)
         ->assertDontSee('<script>alert("stock")</script>', escape: false);

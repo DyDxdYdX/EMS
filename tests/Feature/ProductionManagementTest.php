@@ -24,7 +24,7 @@ test('authenticated users can view production records newest first', function ()
     ]);
 
     $this->actingAs($user)
-        ->get(route('productions.index'))
+        ->get(route('egg-operations.index', ['tab' => 'production']))
         ->assertOk()
         ->assertSeeInOrder(['19 Sep 2026', '18 Sep 2026']);
 });

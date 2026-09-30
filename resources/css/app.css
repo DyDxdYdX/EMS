@@ -37,10 +37,6 @@
 }
 
 @layer components {
-    .mobile-main {
-        padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
-    }
-
     .mobile-bottom-nav {
         padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
     }
@@ -86,9 +82,9 @@
     }
 }
 
-@media (min-width: 64rem) {
+@media (max-width: 63.999rem) {
     .mobile-main {
-        padding-bottom: 0;
+        padding-bottom: calc(7rem + env(safe-area-inset-bottom));
     }
 }
 

@@ -490,6 +490,29 @@ new #[Title('Sales')] class extends Component {
                     @endunless
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->sales as $sale)
+                        <article wire:key="mobile-sale-{{ $sale->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold">{{ $sale->customer?->name ?? __('Walk-in') }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $sale->sale_date->format('d M Y') }} · {{ $sale->eggGrade->name }}</p>
+                                </div>
+                                <p class="shrink-0 font-semibold">{{ __('RM :amount', ['amount' => number_format((float) $sale->total_amount, 2)]) }}</p>
+                            </div>
+                            <p class="mt-3 text-sm text-zinc-700 dark:text-zinc-300">{{ number_format($sale->quantity) }} {{ $sale->unit === 'tray' ? __('trays') : __('eggs') }} · {{ __('RM :amount', ['amount' => number_format((float) $sale->unit_price, 2)]) }} / {{ $sale->unit }}</p>
+                            @if ($sale->notes)
+                                <p class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $sale->notes }}</p>
+                            @endif
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editSale({{ $sale->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmSaleDeletion({{ $sale->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->sales->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->sales">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
@@ -547,6 +570,7 @@ new #[Title('Sales')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

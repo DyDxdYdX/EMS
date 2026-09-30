@@ -237,6 +237,26 @@ new #[Title('Daily production')] class extends Component {
                     @endunless
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->productions as $production)
+                        <article wire:key="mobile-production-{{ $production->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <p class="font-semibold">{{ $production->production_date->format('d M Y') }}</p>
+                                <flux:badge color="green" size="sm">{{ number_format($production->total_eggs - $production->damaged_eggs) }} {{ __('for grading') }}</flux:badge>
+                            </div>
+                            <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ number_format($production->total_eggs) }} {{ __('collected') }} · {{ number_format($production->damaged_eggs) }} {{ __('damaged') }}</p>
+                            @if ($production->notes)
+                                <p class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $production->notes }}</p>
+                            @endif
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editProduction({{ $production->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmProductionDeletion({{ $production->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->productions->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->productions">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
@@ -280,6 +300,7 @@ new #[Title('Daily production')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

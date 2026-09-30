@@ -190,6 +190,28 @@ new #[Title('Customers')] class extends Component {
                     @endunless
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->customers as $customer)
+                        <article wire:key="mobile-customer-{{ $customer->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold">{{ $customer->name }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $customer->phone ?? __('No phone number') }}</p>
+                                </div>
+                                <flux:badge size="sm">{{ trans_choice(':count sale|:count sales', $customer->sales_count, ['count' => number_format($customer->sales_count)]) }}</flux:badge>
+                            </div>
+                            @if ($customer->notes)
+                                <p class="mt-2 truncate text-sm text-zinc-600 dark:text-zinc-300">{{ $customer->notes }}</p>
+                            @endif
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editCustomer({{ $customer->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmCustomerDeletion({{ $customer->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->customers->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->customers">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Customer') }}</flux:table.column>
@@ -227,6 +249,7 @@ new #[Title('Customers')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

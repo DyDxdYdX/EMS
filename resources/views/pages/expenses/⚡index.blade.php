@@ -272,6 +272,28 @@ new #[Title('Expenses')] class extends Component {
                     @endunless
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->expenses as $expense)
+                        <article wire:key="mobile-expense-{{ $expense->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold">{{ $expense->title }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $expense->expense_date->format('d M Y') }} · {{ $expense->expenseCategory->name }}</p>
+                                </div>
+                                <p class="shrink-0 font-semibold">{{ __('RM :amount', ['amount' => number_format((float) $expense->amount, 2)]) }}</p>
+                            </div>
+                            @if ($expense->description)
+                                <p class="mt-2 truncate text-sm text-zinc-600 dark:text-zinc-300">{{ $expense->description }}</p>
+                            @endif
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editExpense({{ $expense->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmExpenseDeletion({{ $expense->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->expenses->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->expenses">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
@@ -311,6 +333,7 @@ new #[Title('Expenses')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

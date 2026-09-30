@@ -24,6 +24,18 @@ test('authenticated users can visit the dashboard', function () {
         ->assertSee('No expenses in this period');
 });
 
+test('authenticated pages provide the mobile navigation destinations', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertSee('aria-label="Main navigation"', false)
+        ->assertSee('href="'.route('egg-operations.index').'"', false)
+        ->assertSee('href="'.route('sales.index').'"', false)
+        ->assertSee('href="'.route('expenses.index').'"', false)
+        ->assertSee('id="mobile-more-menu"', false);
+});
+
 test('dashboard calculates exact profit and loss for the current month', function () {
     $this->travelTo('2026-09-21 12:00:00');
 

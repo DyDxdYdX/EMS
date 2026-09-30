@@ -54,16 +54,16 @@ new #[Title('Egg operations')] class extends Component {
         </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4">
         <flux:card class="metric-card space-y-2">
             <flux:text>{{ __('Available to grade') }}</flux:text>
             <flux:heading size="xl" data-test="egg-operations-available-to-grade">{{ number_format($this->availableToGrade) }}</flux:heading>
-            <flux:text class="text-xs">{{ __('Collected eggs not yet assigned a grade') }}</flux:text>
+            <flux:text class="hidden text-xs sm:block">{{ __('Collected eggs not yet assigned a grade') }}</flux:text>
         </flux:card>
         <flux:card class="metric-card space-y-2">
             <flux:text>{{ __('Graded stock on hand') }}</flux:text>
             <flux:heading size="xl" data-test="egg-operations-stock-on-hand">{{ number_format($this->stockOnHand) }}</flux:heading>
-            <flux:text class="text-xs">{{ __('After sales and stock adjustments') }}</flux:text>
+            <flux:text class="hidden text-xs sm:block">{{ __('After sales and stock adjustments') }}</flux:text>
         </flux:card>
     </div>
 

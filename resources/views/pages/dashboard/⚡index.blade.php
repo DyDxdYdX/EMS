@@ -365,8 +365,8 @@ new #[Title('Dashboard')] class extends Component {
         </form>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <flux:card class="metric-card space-y-5 sm:col-span-2">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <flux:card class="metric-card col-span-2 space-y-4 sm:space-y-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <flux:text>{{ __('Net result') }}</flux:text>
@@ -391,31 +391,36 @@ new #[Title('Dashboard')] class extends Component {
             </div>
         </flux:card>
 
-        <flux:card class="metric-card space-y-3">
+        <flux:card class="metric-card min-w-0 space-y-3">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Sales revenue') }}</flux:text>
-                    <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['revenue']]) }}</flux:heading>
+                    <flux:heading size="xl" class="break-all text-lg sm:text-xl">{{ __('RM :amount', ['amount' => $this->summary['revenue']]) }}</flux:heading>
                 </div>
-                <div class="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <div class="hidden rounded-xl bg-emerald-100 p-2 text-emerald-700 sm:block dark:bg-emerald-950 dark:text-emerald-300">
                     <flux:icon name="arrow-trending-up" class="size-5" />
                 </div>
             </div>
             <flux:text class="text-xs">{{ trans_choice(':count recorded sale|:count recorded sales', $this->summary['sale_count'], ['count' => number_format($this->summary['sale_count'])]) }}</flux:text>
         </flux:card>
 
-        <flux:card class="metric-card space-y-3">
+        <flux:card class="metric-card min-w-0 space-y-3">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Operating expenses') }}</flux:text>
-                    <flux:heading size="xl">{{ __('RM :amount', ['amount' => $this->summary['expenses']]) }}</flux:heading>
+                    <flux:heading size="xl" class="break-all text-lg sm:text-xl">{{ __('RM :amount', ['amount' => $this->summary['expenses']]) }}</flux:heading>
                 </div>
-                <div class="rounded-xl bg-rose-100 p-2 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                <div class="hidden rounded-xl bg-rose-100 p-2 text-rose-700 sm:block dark:bg-rose-950 dark:text-rose-300">
                     <flux:icon name="arrow-trending-down" class="size-5" />
                 </div>
             </div>
             <flux:text class="text-xs">{{ trans_choice(':count recorded expense|:count recorded expenses', $this->summary['expense_count'], ['count' => number_format($this->summary['expense_count'])]) }}</flux:text>
         </flux:card>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 sm:hidden" aria-label="{{ __('Quick actions') }}">
+        <flux:button class="w-full" variant="primary" icon="clipboard-document-list" :href="route('egg-operations.index', ['tab' => 'production'])" wire:navigate>{{ __('Record eggs') }}</flux:button>
+        <flux:button class="w-full" icon="shopping-cart" :href="route('sales.index')" wire:navigate>{{ __('Record sale') }}</flux:button>
     </div>
 
     <div @class([

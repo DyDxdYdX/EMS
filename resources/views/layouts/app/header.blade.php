@@ -115,6 +115,8 @@
 
         {{ $slot }}
 
+        @include('partials.mobile-navigation')
+
         @persist('toast')
             <flux:toast.group>
                 <flux:toast />

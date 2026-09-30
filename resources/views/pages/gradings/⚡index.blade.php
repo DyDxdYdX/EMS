@@ -318,6 +318,28 @@ new #[Title('Egg grading')] class extends Component {
                     </flux:modal.trigger>
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->gradings as $grading)
+                        <article wire:key="mobile-grading-{{ $grading->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold">{{ $grading->eggGrade->name }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $grading->grading_date->format('d M Y') }}</p>
+                                </div>
+                                <p class="shrink-0 font-semibold">{{ number_format($grading->quantity) }} {{ __('eggs') }}</p>
+                            </div>
+                            @if ($grading->notes)
+                                <p class="mt-2 truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $grading->notes }}</p>
+                            @endif
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editGrading({{ $grading->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmGradingDeletion({{ $grading->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->gradings->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->gradings">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
@@ -355,6 +377,7 @@ new #[Title('Egg grading')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

@@ -320,6 +320,26 @@ new #[Title('Stock adjustments')] class extends Component {
                     </flux:modal.trigger>
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->adjustments as $adjustment)
+                        <article wire:key="mobile-adjustment-{{ $adjustment->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold">{{ $adjustment->eggGrade->name }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $adjustment->adjustment_date->format('d M Y') }}</p>
+                                </div>
+                                <flux:badge :color="$adjustment->type === 'add' ? 'green' : 'red'" size="sm">{{ $adjustment->type === 'add' ? '+' : '−' }}{{ number_format($adjustment->quantity) }}</flux:badge>
+                            </div>
+                            <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $adjustment->reason }}</p>
+                            <div class="mt-3 flex gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button class="flex-1" size="sm" variant="ghost" wire:click="editAdjustment({{ $adjustment->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button class="flex-1" size="sm" variant="danger" wire:click="confirmAdjustmentDeletion({{ $adjustment->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                    {{ $this->adjustments->links() }}
+                </div>
+                <div class="hidden sm:block">
                 <flux:table :paginate="$this->adjustments">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
@@ -354,6 +374,7 @@ new #[Title('Stock adjustments')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

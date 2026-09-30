@@ -56,9 +56,8 @@
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+        <flux:header class="lg:hidden border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
 
             <flux:spacer />
 
@@ -112,6 +111,8 @@
         </flux:header>
 
         {{ $slot }}
+
+        @include('partials.mobile-navigation')
 
         @persist('toast')
             <flux:toast.group>

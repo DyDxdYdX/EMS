@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <title>
-    {{ filled($title ?? null) ? $title.' - '.config('app.display_name') : config('app.display_name') }}
+    {{ filled($title ?? null) ? $title.' - '.$farmName : $farmName }}
 </title>
 
 <meta name="theme-color" content="#166534" />

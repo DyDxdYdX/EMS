@@ -100,6 +100,40 @@ test('sales form defaults unit to tray and preselects first egg grade', function
         ->assertSet('eggGradeId', $gradeAa->id);
 });
 
+test('new sales use grade prices for the selected unit and grade', function () {
+    $user = User::factory()->create();
+    $gradeA = EggGrade::factory()->create(['sort_order' => 1, 'price_per_egg' => '0.50', 'price_per_tray' => '14.00']);
+    $gradeB = EggGrade::factory()->create(['sort_order' => 2, 'price_per_egg' => '0.60', 'price_per_tray' => '17.00']);
+
+    Livewire::actingAs($user)
+        ->test('pages::sales.index')
+        ->assertSet('eggGradeId', $gradeA->id)
+        ->assertSet('unitPrice', '14.00')
+        ->set('unit', 'egg')
+        ->assertSet('unitPrice', '0.50')
+        ->set('eggGradeId', $gradeB->id)
+        ->assertSet('unitPrice', '0.60')
+        ->set('unitPrice', '0.65')
+        ->assertSet('unitPrice', '0.65');
+});
+
+test('a sale can override the grade default without changing the grade price', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create(['price_per_egg' => '0.50']);
+    EggGrading::factory()->for($grade)->create(['quantity' => 20]);
+
+    Livewire::actingAs($user)
+        ->test('pages::sales.index')
+        ->set('unit', 'egg')
+        ->set('quantity', 2)
+        ->set('unitPrice', '0.75')
+        ->call('saveSale')
+        ->assertHasNoErrors();
+
+    expect(Sale::query()->sole()->unit_price)->toBe('0.75')
+        ->and($grade->refresh()->price_per_egg)->toBe('0.50');
+});
+
 test('customer picker shows a bounded list and searches names and phone numbers', function () {
     Customer::factory()->count(25)->sequence(fn ($sequence): array => [
         'name' => sprintf('Customer %02d', $sequence->index + 1),

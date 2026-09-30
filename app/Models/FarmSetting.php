@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['eggs_per_tray'])]
+#[Fillable(['farm_name', 'eggs_per_tray'])]
 class FarmSetting extends Model
 {
     /** @use HasFactory<FarmSettingFactory> */

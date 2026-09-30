@@ -28,6 +28,8 @@ test('egg grades can be created', function () {
         ->set('weightRange', '75 g and above')
         ->set('sortOrder', 8)
         ->set('isActive', true)
+        ->set('pricePerEgg', '0.55')
+        ->set('pricePerTray', '15.50')
         ->call('saveGrade')
         ->assertHasNoErrors();
 
@@ -36,7 +38,41 @@ test('egg grades can be created', function () {
         'weight_range' => '75 g and above',
         'sort_order' => 8,
         'is_active' => true,
+        'price_per_egg' => '0.55',
+        'price_per_tray' => '15.50',
     ]);
+});
+
+test('egg grade prices can be edited and cleared', function () {
+    $user = User::factory()->create();
+    $grade = EggGrade::factory()->create(['price_per_egg' => '0.50', 'price_per_tray' => '14.00']);
+
+    Livewire::actingAs($user)
+        ->test('pages::egg-grades.index')
+        ->call('editGrade', $grade->id)
+        ->assertSet('pricePerEgg', '0.50')
+        ->set('pricePerEgg', '')
+        ->set('pricePerTray', '16.00')
+        ->call('saveGrade')
+        ->assertHasNoErrors();
+
+    expect($grade->refresh())
+        ->price_per_egg->toBeNull()
+        ->price_per_tray->toBe('16.00');
+});
+
+test('egg grade prices must be positive amounts with at most two decimals', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::egg-grades.index')
+        ->set('name', 'Grade Priced')
+        ->set('pricePerEgg', '0')
+        ->set('pricePerTray', '12.345')
+        ->call('saveGrade')
+        ->assertHasErrors(['pricePerEgg', 'pricePerTray']);
+
+    expect(EggGrade::query()->count())->toBe(0);
 });
 
 test('egg grade names must be unique', function () {

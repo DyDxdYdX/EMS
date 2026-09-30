@@ -18,6 +18,7 @@ class FarmSettingFactory extends Factory
     public function definition(): array
     {
         return [
+            'farm_name' => config('app.display_name'),
             'eggs_per_tray' => 30,
         ];
     }

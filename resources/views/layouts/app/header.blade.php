@@ -34,6 +34,9 @@
                 <flux:navbar.item icon="tag" :href="route('expense-categories.index')" :current="request()->routeIs('expense-categories.*')" wire:navigate>
                     {{ __('Expense categories') }}
                 </flux:navbar.item>
+                <flux:navbar.item icon="user-group" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                    {{ __('Users') }}
+                </flux:navbar.item>
             </flux:navbar>
 
             <flux:spacer />
@@ -97,6 +100,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="tag" :href="route('expense-categories.index')" :current="request()->routeIs('expense-categories.*')" wire:navigate>
                         {{ __('Expense categories') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="user-group" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                        {{ __('Users') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

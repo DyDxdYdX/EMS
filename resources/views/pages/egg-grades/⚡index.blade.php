@@ -21,6 +21,8 @@ new #[Title('Egg grades')] class extends Component {
     public string $weightRange = '';
     public int $sortOrder = 0;
     public bool $isActive = true;
+    public string $pricePerEgg = '';
+    public string $pricePerTray = '';
 
     /** @return Collection<int, EggGrade> */
     #[Computed]
@@ -45,6 +47,8 @@ new #[Title('Egg grades')] class extends Component {
                 'weight_range' => filled($validated['weightRange']) ? $validated['weightRange'] : null,
                 'sort_order' => $validated['sortOrder'],
                 'is_active' => $validated['isActive'],
+                'price_per_egg' => filled($validated['pricePerEgg']) ? $validated['pricePerEgg'] : null,
+                'price_per_tray' => filled($validated['pricePerTray']) ? $validated['pricePerTray'] : null,
             ],
         );
 
@@ -70,6 +74,8 @@ new #[Title('Egg grades')] class extends Component {
         $this->weightRange = $grade->weight_range ?? '';
         $this->sortOrder = $grade->sort_order;
         $this->isActive = $grade->is_active;
+        $this->pricePerEgg = $grade->price_per_egg ?? '';
+        $this->pricePerTray = $grade->price_per_tray ?? '';
         $this->resetValidation();
         Flux::modal('grade-form')->show();
     }
@@ -140,12 +146,14 @@ new #[Title('Egg grades')] class extends Component {
             'weightRange' => ['nullable', 'string', 'max:255'],
             'sortOrder' => ['required', 'integer', 'between:0,65535'],
             'isActive' => ['required', 'boolean'],
+            'pricePerEgg' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2', 'max:99999999.99'],
+            'pricePerTray' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2', 'max:99999999.99'],
         ];
     }
 
     private function resetGradeForm(): void
     {
-        $this->reset('editingGradeId', 'name', 'weightRange', 'sortOrder', 'isActive');
+        $this->reset('editingGradeId', 'name', 'weightRange', 'sortOrder', 'isActive', 'pricePerEgg', 'pricePerTray');
         $this->isActive = true;
         $this->resetValidation();
     }
@@ -179,6 +187,11 @@ new #[Title('Egg grades')] class extends Component {
 
                 <flux:input wire:model="name" :label="__('Name')" placeholder="Grade A" required />
                 <flux:input wire:model="weightRange" :label="__('Weight range')" placeholder="65–69.9 g" />
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <flux:input wire:model="pricePerEgg" :label="__('Default price per egg (RM)')" type="number" min="0.01" step="0.01" />
+                    <flux:input wire:model="pricePerTray" :label="__('Default price per tray (RM)')" type="number" min="0.01" step="0.01" />
+                </div>
+                <flux:text class="text-xs">{{ __('These prices prefill new sales and can be changed for an individual sale.') }}</flux:text>
                 <flux:input wire:model="sortOrder" :label="__('Sort order')" type="number" min="0" max="65535" required />
                 <flux:switch wire:model="isActive" :label="__('Active')" />
 
@@ -202,10 +215,34 @@ new #[Title('Egg grades')] class extends Component {
                     </flux:modal.trigger>
                 </div>
             @else
+                <div class="space-y-3 sm:hidden">
+                    @foreach ($this->grades as $grade)
+                        <article wire:key="mobile-grade-{{ $grade->id }}" class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold">{{ $grade->name }}</p>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $grade->weight_range ?? __('No weight range') }}</p>
+                                </div>
+                                <flux:badge :color="$grade->is_active ? 'green' : null" size="sm">{{ $grade->is_active ? __('Active') : __('Inactive') }}</flux:badge>
+                            </div>
+                            <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                <div><p class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Per egg') }}</p><p class="font-medium">{{ $grade->price_per_egg === null ? '—' : 'RM '.$grade->price_per_egg }}</p></div>
+                                <div><p class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Per tray') }}</p><p class="font-medium">{{ $grade->price_per_tray === null ? '—' : 'RM '.$grade->price_per_tray }}</p></div>
+                            </div>
+                            <div class="mt-3 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                <flux:button size="sm" variant="ghost" wire:click="editGrade({{ $grade->id }})">{{ __('Edit') }}</flux:button>
+                                <flux:button size="sm" variant="ghost" wire:click="toggleGrade({{ $grade->id }})">{{ $grade->is_active ? __('Deactivate') : __('Activate') }}</flux:button>
+                                <flux:button size="sm" variant="danger" wire:click="confirmGradeDeletion({{ $grade->id }})">{{ __('Delete') }}</flux:button>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+                <div class="hidden sm:block">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('Grade') }}</flux:table.column>
                         <flux:table.column>{{ __('Weight range') }}</flux:table.column>
+                        <flux:table.column>{{ __('Default prices') }}</flux:table.column>
                         <flux:table.column>{{ __('Status') }}</flux:table.column>
                         <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
                     </flux:table.columns>
@@ -222,6 +259,12 @@ new #[Title('Egg grades')] class extends Component {
                                     </div>
                                 </flux:table.cell>
                                 <flux:table.cell>{{ $grade->weight_range ?? '—' }}</flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex flex-col text-sm">
+                                        <span>{{ __('Egg: :price', ['price' => $grade->price_per_egg === null ? '—' : 'RM '.$grade->price_per_egg]) }}</span>
+                                        <span>{{ __('Tray: :price', ['price' => $grade->price_per_tray === null ? '—' : 'RM '.$grade->price_per_tray]) }}</span>
+                                    </div>
+                                </flux:table.cell>
                                 <flux:table.cell>
                                     <flux:badge :color="$grade->is_active ? 'green' : null" size="sm">
                                         {{ $grade->is_active ? __('Active') : __('Inactive') }}
@@ -244,6 +287,7 @@ new #[Title('Egg grades')] class extends Component {
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             @endif
     </flux:card>
 

@@ -28,6 +28,8 @@ class EggGradeFactory extends Factory
                 '65–69.9 g',
             ]),
             'sort_order' => fake()->numberBetween(1, 100),
+            'price_per_egg' => null,
+            'price_per_tray' => null,
         ];
     }
 

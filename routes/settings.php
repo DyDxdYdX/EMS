@@ -7,6 +7,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
     Route::livewire('settings/farm', 'pages::settings.farm')->name('farm-settings.edit');
+    Route::livewire('settings/users', 'pages::settings.users')->name('users.index');
 });
 
 Route::middleware('auth')->group(function () {

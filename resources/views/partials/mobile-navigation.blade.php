@@ -14,6 +14,7 @@
             <a href="{{ route('egg-grades.index') }}" wire:navigate @click="moreOpen = false" class="mobile-more-link"><flux:icon name="scale" class="size-5" />{{ __('Egg grades') }}</a>
             <a href="{{ route('expense-categories.index') }}" wire:navigate @click="moreOpen = false" class="mobile-more-link"><flux:icon name="tag" class="size-5" />{{ __('Expense categories') }}</a>
             <a href="{{ route('farm-settings.edit') }}" wire:navigate @click="moreOpen = false" class="mobile-more-link"><flux:icon name="cog-6-tooth" class="size-5" />{{ __('Farm settings') }}</a>
+            <a href="{{ route('users.index') }}" wire:navigate @click="moreOpen = false" class="mobile-more-link"><flux:icon name="user-group" class="size-5" />{{ __('Users') }}</a>
             <a href="{{ route('profile.edit') }}" wire:navigate @click="moreOpen = false" class="mobile-more-link"><flux:icon name="user-circle" class="size-5" />{{ __('Profile') }}</a>
         </nav>
     </div>
@@ -31,7 +32,7 @@
         <a href="{{ route('expenses.index') }}" wire:navigate @if (request()->routeIs('expenses.*')) aria-current="page" @endif @class(['mobile-nav-link', 'mobile-nav-link-active' => request()->routeIs('expenses.*')])>
             <flux:icon name="receipt-percent" class="size-5" /><span>{{ __('Expenses') }}</span>
         </a>
-        <button x-ref="moreToggle" type="button" @click="moreOpen = ! moreOpen; if (moreOpen) $nextTick(() => $refs.moreClose.focus())" :aria-expanded="moreOpen.toString()" aria-controls="mobile-more-menu" @class(['mobile-nav-link', 'mobile-nav-link-active' => request()->routeIs('reports.*', 'customers.*', 'egg-grades.*', 'expense-categories.*', 'farm-settings.*', 'profile.*')])>
+        <button x-ref="moreToggle" type="button" @click="moreOpen = ! moreOpen; if (moreOpen) $nextTick(() => $refs.moreClose.focus())" :aria-expanded="moreOpen.toString()" aria-controls="mobile-more-menu" @class(['mobile-nav-link', 'mobile-nav-link-active' => request()->routeIs('reports.*', 'customers.*', 'egg-grades.*', 'expense-categories.*', 'farm-settings.*', 'users.*', 'profile.*')])>
             <flux:icon name="ellipsis-horizontal" class="size-5" /><span>{{ __('More') }}</span>
         </button>
     </nav>

@@ -38,7 +38,7 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('Configuration')" expandable :expanded="request()->routeIs('egg-grades.*', 'expense-categories.*', 'farm-settings.*')" class="grid">
+                <flux:sidebar.group :heading="__('Configuration')" expandable :expanded="request()->routeIs('egg-grades.*', 'expense-categories.*', 'farm-settings.*', 'users.*')" class="grid">
                     <flux:sidebar.item icon="scale" :href="route('egg-grades.index')" :current="request()->routeIs('egg-grades.*')" wire:navigate>
                         {{ __('Egg grades') }}
                     </flux:sidebar.item>
@@ -47,6 +47,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="cog-6-tooth" :href="route('farm-settings.edit')" :current="request()->routeIs('farm-settings.*')" wire:navigate>
                         {{ __('Farm settings') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="user-group" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                        {{ __('Users') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

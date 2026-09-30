@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'is_active', 'weight_range', 'sort_order'])]
+#[Fillable(['name', 'is_active', 'weight_range', 'sort_order', 'price_per_egg', 'price_per_tray'])]
 class EggGrade extends Model
 {
     /** @use HasFactory<EggGradeFactory> */
@@ -54,6 +54,8 @@ class EggGrade extends Model
     {
         return [
             'is_active' => 'boolean',
+            'price_per_egg' => 'decimal:2',
+            'price_per_tray' => 'decimal:2',
         ];
     }
 }

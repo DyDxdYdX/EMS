@@ -16,7 +16,7 @@ class FarmSeeder extends Seeder
     {
         FarmSetting::query()->firstOrCreate(
             ['id' => 1],
-            ['eggs_per_tray' => 30],
+            ['farm_name' => config('app.display_name'), 'eggs_per_tray' => 30],
         );
 
         $eggGrades = [

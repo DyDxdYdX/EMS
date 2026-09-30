@@ -41,6 +41,19 @@ new #[Title('Sales')] class extends Component {
     {
         $this->saleDate = now()->toDateString();
         $this->eggGradeId = $this->selectableGrades->first()?->id;
+        $this->applyDefaultUnitPrice();
+    }
+
+    public function updatedEggGradeId(): void
+    {
+        $this->applyDefaultUnitPrice(clearWhenMissing: $this->editingSaleId === null);
+        unset($this->availableStock);
+    }
+
+    public function updatedUnit(): void
+    {
+        $this->applyDefaultUnitPrice();
+        unset($this->normalizedEggQuantity);
     }
 
     /** @return Collection<int, Customer> */
@@ -295,7 +308,20 @@ new #[Title('Sales')] class extends Component {
         $this->unitPrice = '0.00';
         $this->clearComputedData();
         $this->eggGradeId = $this->selectableGrades->first()?->id;
+        $this->applyDefaultUnitPrice();
         $this->resetValidation();
+    }
+
+    private function applyDefaultUnitPrice(bool $clearWhenMissing = true): void
+    {
+        $priceColumn = $this->unit === 'tray' ? 'price_per_tray' : 'price_per_egg';
+        $defaultPrice = EggGrade::query()->whereKey($this->eggGradeId)->value($priceColumn);
+
+        if ($defaultPrice !== null || $clearWhenMissing) {
+            $this->unitPrice = (string) ($defaultPrice ?? '0.00');
+        }
+        unset($this->totalPreview);
+        $this->resetValidation('unitPrice');
     }
 
     private function clearComputedData(): void
@@ -447,7 +473,7 @@ new #[Title('Sales')] class extends Component {
                     </flux:text>
                 @endif
 
-                <flux:input wire:model.live="unitPrice" :label="__('Price per unit')" type="number" min="0.01" step="0.01" required />
+                <flux:input wire:model.live="unitPrice" :label="__('Price per unit (RM)')" :description="__('Prefilled from the egg grade when available. You can override it for this sale.')" type="number" min="0.01" step="0.01" required />
                 <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" placeholder="Optional sale notes" />
 
                 <div class="grid grid-cols-3 gap-2 rounded-lg bg-zinc-100 px-3 py-3 dark:bg-zinc-800">

@@ -225,7 +225,11 @@ jobs:
             echo "Installing Composer dependencies..."
             $PHP $COMPOSER install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-            echo "Replacing built frontend assets..."
+            echo "Replacing built frontend public assets..."
+            rm -rf public/build
+            tar -xzf public-build.tar.gz -C public
+
+            echo "Replacing built frontend public_html assets..."
             rm -rf public_html/build
             tar -xzf public-build.tar.gz -C public_html
             rm -f public-build.tar.gz

@@ -21,7 +21,8 @@ test('egg sales calculate totals and reduce stock', function () {
     Livewire::actingAs($user)
         ->test('pages::sales.index')
         ->set('saleDate', '2026-09-21')
-        ->set('customerId', $customer->id)
+        ->set('customerType', 'existing')
+        ->call('selectCustomer', $customer->id)
         ->set('eggGradeId', $grade->id)
         ->set('unit', 'egg')
         ->set('quantity', 12)
@@ -107,6 +108,10 @@ test('customer picker shows a bounded list and searches names and phone numbers'
 
     Livewire::actingAs(User::factory()->create())
         ->test('pages::sales.index')
+        ->assertDontSee('role="combobox"', escape: false)
+        ->set('customerType', 'existing')
+        ->assertSee('role="combobox"', escape: false)
+        ->assertSee('role="listbox"', escape: false)
         ->assertSee('Customer 20')
         ->assertDontSee('Customer 21')
         ->set('customerSearch', 'Customer 25')
@@ -116,11 +121,10 @@ test('customer picker shows a bounded list and searches names and phone numbers'
         ->assertSee('Customer 24')
         ->assertDontSee('Customer 25')
         ->set('customerSearch', 'no matching customer')
-        ->assertSee('No matching customers')
-        ->assertSee('Walk-in customer');
+        ->assertSee('No matching customers');
 });
 
-test('customer picker keeps the selected customer available outside search results', function () {
+test('customer picker selects a customer and clears the selection when searching again', function () {
     Customer::factory()->count(20)->sequence(fn ($sequence): array => [
         'name' => sprintf('Customer %02d', $sequence->index + 1),
     ])->create();
@@ -128,13 +132,80 @@ test('customer picker keeps the selected customer available outside search resul
 
     Livewire::actingAs(User::factory()->create())
         ->test('pages::sales.index')
-        ->set('customerId', $selectedCustomer->id)
-        ->set('customerSearch', 'no match')
-        ->assertSee('Customer 25')
+        ->set('customerType', 'existing')
+        ->call('selectCustomer', $selectedCustomer->id)
+        ->assertSet('customerSearch', 'Customer 25')
         ->assertSet('customerId', $selectedCustomer->id)
+        ->set('customerSearch', 'no match')
+        ->assertSet('customerId', null)
+        ->assertDontSee('Customer 25')
         ->call('cancelEditing')
+        ->assertSet('customerType', 'walk_in')
         ->assertSet('customerSearch', '')
         ->assertSet('customerId', null);
+});
+
+test('switching to walk-in removes a previously selected customer', function () {
+    $customer = Customer::factory()->create(['name' => 'Local buyer']);
+
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->set('customerType', 'existing')
+        ->call('selectCustomer', $customer->id)
+        ->set('customerType', 'walk_in')
+        ->assertSet('customerId', null)
+        ->assertSet('customerSearch', '')
+        ->assertDontSee('role="combobox"', escape: false)
+        ->assertSee('No customer details needed for a walk-in sale.');
+});
+
+test('existing-customer sales require a customer selection', function () {
+    $grade = EggGrade::factory()->create();
+    EggGrading::factory()->for($grade)->create(['quantity' => 20]);
+
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->set('customerType', 'existing')
+        ->set('saleDate', '2026-09-21')
+        ->set('eggGradeId', $grade->id)
+        ->set('unit', 'egg')
+        ->set('quantity', 1)
+        ->set('unitPrice', '0.50')
+        ->call('saveSale')
+        ->assertHasErrors(['customerId']);
+
+    expect(Sale::query()->count())->toBe(0);
+});
+
+test('sales reject an unknown customer type', function () {
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->set('customerType', 'unknown')
+        ->call('saveSale')
+        ->assertHasErrors(['customerType']);
+
+    expect(Sale::query()->count())->toBe(0);
+});
+
+test('editing a customer sale opens the customer picker', function () {
+    $customer = Customer::factory()->create(['name' => 'Local buyer']);
+    $sale = Sale::factory()->create(['customer_id' => $customer->id]);
+
+    Livewire::actingAs(User::factory()->create())
+        ->test('pages::sales.index')
+        ->call('editSale', $sale->id)
+        ->assertSet('customerType', 'existing')
+        ->assertSet('customerId', $customer->id)
+        ->assertSet('customerSearch', 'Local buyer')
+        ->assertSee('role="combobox"', escape: false);
+});
+
+test('customer selection requires authentication', function () {
+    $customer = Customer::factory()->create();
+
+    Livewire::test('pages::sales.index')
+        ->call('selectCustomer', $customer->id)
+        ->assertForbidden();
 });
 
 test('sales cannot exceed available grade stock', function () {
